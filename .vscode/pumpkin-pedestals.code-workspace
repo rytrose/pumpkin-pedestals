@@ -6,18 +6,16 @@
   ],
   "settings": {
     "python.languageServer": "Pylance",
-    "workbench.colorTheme": "Default Dark+",
+    "workbench.colorTheme": "Darcula Pycharm with Dark GUI",
     "python.linting.pylintEnabled": false,
     "python.analysis.diagnosticSeverityOverrides": {
       "reportMissingModuleSource": "none"
     },
     "python.analysis.extraPaths": [
-        "/Users/rytrose/.vscode/extensions/joedevivo.vscode-circuitpython-0.1.20-darwin-x64/boards/0x2886/0x8045",
-        "/Users/rytrose/.vscode/extensions/joedevivo.vscode-circuitpython-0.1.20-darwin-x64/stubs",
-        "/Users/rytrose/Library/Application Support/Code/User/globalStorage/joedevivo.vscode-circuitpython/bundle/20230226/adafruit-circuitpython-bundle-py-20230226/lib"
+      "/Users/rytrose/.vscode/extensions/joedevivo.vscode-circuitpython-0.1.20-darwin-x64/boards/0x2886/0x8045",
+      "/Users/rytrose/.vscode/extensions/joedevivo.vscode-circuitpython-0.1.20-darwin-x64/stubs",
+      "/Users/rytrose/Library/Application Support/Code/User/globalStorage/joedevivo.vscode-circuitpython/bundle/20230226/adafruit-circuitpython-bundle-py-20230226/lib"
     ],
-    "eslint.workingDirectories": [
-        "./web"
-    ]
+    "eslint.workingDirectories": ["./app"]
   }
 }

@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "app",
+    "slug": "app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rytrose.pumpkin-pedestals"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "com.rytrose.pumpkin_pedestals"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4cea6141-7c71-41ae-976e-ff41d0ca960e"
+      }
+    },
+    "plugins": ["@config-plugins/react-native-ble-plx"]
+  }
+}
