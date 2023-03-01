@@ -6,7 +6,7 @@
   ],
   "settings": {
     "python.languageServer": "Pylance",
-    "workbench.colorTheme": "Darcula Pycharm with Dark GUI",
+    "workbench.colorTheme": "Default Dark+",
     "python.linting.pylintEnabled": false,
     "python.analysis.diagnosticSeverityOverrides": {
       "reportMissingModuleSource": "none"
