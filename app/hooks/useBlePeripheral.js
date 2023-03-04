@@ -1,22 +1,36 @@
-import { useState, useEffect, useCallback } from "react";
-import { Platform, PermissionsAndroid } from "react-native";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { LogBox, Platform, PermissionsAndroid } from "react-native";
 import { BleManager } from "react-native-ble-plx";
 import { Buffer } from "buffer";
 
 import * as Location from "expo-location";
 
+// Ignore the NativeEventEmitter warning from BleManager
+LogBox.ignoreLogs(["new NativeEventEmitter"]);
 const ble = new BleManager();
 
-const useBlePeripheral = () => {
+export const BleConnectionStatus = {
+  BLUETOOTH_UNAVAILABLE: "bluetooth_unavailable",
+  READY_TO_CONNECT: "ready_to_connect",
+  CONNECTED: "connected",
+};
+
+export const useBlePeripheral = (readCallback) => {
   const [peripheral, setPeripheral] = useState(null);
-  const [rx, setRx] = useState(null);
+  const [bluetoothPermitted, setBluetoothPermitted] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState(
+    BleConnectionStatus.BLUETOOTH_UNAVAILABLE
+  );
+  const [error, setError] = useState(null);
+  const readBuffer = useRef("");
 
   // Ensure correct permissions are requested
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        throw new Error("FIXME - location permission not granted");
+        setError("location permission not granted");
+        return;
       }
       if (Platform.OS === "android") {
         const permissions = await PermissionsAndroid.requestMultiple([
@@ -26,43 +40,59 @@ const useBlePeripheral = () => {
         ]);
         for (let permission of Object.keys(permissions)) {
           if (permissions[permission] !== PermissionsAndroid.RESULTS.GRANTED) {
-            throw new Error(
-              `FIXME - Android permission ${permission} not granted: ${permissions[permission]}`
+            setError(
+              `Android permission ${permission} not granted: ${permissions[permission]}`
             );
+            return;
           }
         }
+        setBluetoothPermitted(true);
       }
     })();
-  }, []);
+  }, [setError, setBluetoothPermitted]);
 
   // Manage BLE adapter state
   useEffect(() => {
-    const subscription = ble.onStateChange((state) => {
-      if (state !== "PoweredOn") {
-        throw new Error("FIXME - unhandled bluetooth state");
-      }
-      console.log("bluetooth state", state);
-    }, true);
+    let adapterStatusSubscription;
+    if (bluetoothPermitted) {
+      // Handle adapter state change
+      adapterStatusSubscription = ble.onStateChange((state) => {
+        console.log("bluetooth state", state);
+        if (state !== "PoweredOn") {
+          setConnectionStatus(BleConnectionStatus.BLUETOOTH_UNAVAILABLE);
+          setError(`unhandled bluetooth state: ${state}`);
+          return;
+        }
+        setConnectionStatus(BleConnectionStatus.READY_TO_CONNECT);
+      }, true);
+    }
 
     return () => {
-      subscription.remove();
+      if (adapterStatusSubscription) adapterStatusSubscription.remove();
     };
-  }, []);
+  }, [bluetoothPermitted, setConnectionStatus, setError]);
 
   // Maintain a peripheral connection
   useEffect(() => {
-    if (!peripheral) scanForPeripheral();
-  }, [peripheral]);
+    if (
+      bluetoothPermitted &&
+      connectionStatus === BleConnectionStatus.READY_TO_CONNECT &&
+      !peripheral
+    )
+      scanForPeripheral();
+  }, [bluetoothPermitted, connectionStatus, peripheral]);
 
   // Scan BLE devices for expected peripheral
   const scanForPeripheral = useCallback(() => {
-    ble.startDeviceScan(null, null, (error, device) => {
-      if (error) {
-        console.error("blutooth scan error", JSON.stringify(error));
+    console.log("scanning for device");
+    ble.startDeviceScan(null, null, (err, device) => {
+      if (err) {
+        console.error("blutooth scan error", JSON.stringify(err));
+        setError(`blutooth scan error: ${JSON.stringify(err)}`);
         return;
       }
       if (device.name === "CIRCUITPYbd17") {
-        console.log("found bluetooth peripheral");
+        console.log("found device");
         ble.stopDeviceScan();
         ble
           .connectToDevice(device.id)
@@ -73,19 +103,23 @@ const useBlePeripheral = () => {
           )
           .then((device) => {
             setPeripheral(device);
-            return device.services();
+            setConnectionStatus(BleConnectionStatus.CONNECTED);
           })
-          .then((services) => {
-            console.log("services", services);
-          })
-          .catch((error) => console.error(error));
+          .catch((err) => {
+            console.error("error connecting to device", JSON.stringify(err));
+            setError("error connecting to device");
+            setConnectionStatus(BleConnectionStatus.READY_TO_CONNECT);
+            setPeripheral(null);
+            scanForPeripheral();
+          });
       }
     });
-  }, [setPeripheral]);
+  }, [setPeripheral, setConnectionStatus, setError]);
 
   // Read from RX characteristic
   useEffect(() => {
     let rxSubscription;
+    let deviceDisconnectedSubscription;
     if (peripheral) {
       rxSubscription = ble.monitorCharacteristicForDevice(
         peripheral.id,
@@ -93,22 +127,79 @@ const useBlePeripheral = () => {
         "6E400003-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase(),
         rxListener
       );
+
+      // Handle device connection state change
+      deviceDisconnectedSubscription = ble.onDeviceDisconnected(
+        peripheral.id,
+        (err, device) => {
+          console.log("device disconnected", device, err);
+          setConnectionStatus(BleConnectionStatus.READY_TO_CONNECT);
+          setPeripheral(null);
+        }
+      );
     }
-    return () => {};
+    return () => {
+      if (rxSubscription) rxSubscription.remove();
+      if (deviceDisconnectedSubscription)
+        deviceDisconnectedSubscription.remove();
+    };
   }, [peripheral]);
 
   // Read callback
-  const rxListener = useCallback((error, characteristic) => {
-    if (error) {
-      console.error("error reading RX characteristic", JSON.stringify(error));
-      return;
-    }
-    if (characteristic) {
-      const value = Buffer.from(characteristic.value, "base64").toString();
-      // TODO: buffer chunks with \n as delimiter
-      console.log("RX:", value.length, value);
-    }
-  }, []);
-};
+  const rxListener = useCallback(
+    (err, characteristic) => {
+      if (err) {
+        if (err.errorCode === 201 || err.errorCode === 205) {
+          console.log("unable to read, device disconnected");
+          setConnectionStatus(BleConnectionStatus.READY_TO_CONNECT);
+          setPeripheral(null);
+          return;
+        }
 
-export default useBlePeripheral;
+        console.error("error reading RX characteristic", JSON.stringify(err));
+        setError("error reading from device");
+        setConnectionStatus(BleConnectionStatus.READY_TO_CONNECT);
+        setPeripheral(null);
+        return;
+      }
+      if (characteristic) {
+        const buffer = readBuffer.current;
+        const value = Buffer.from(characteristic.value, "base64").toString();
+        const read = buffer + value;
+        readBuffer.current = read;
+        if (read.endsWith("\n")) {
+          const trimmed = read.trim();
+          console.log("RX:", trimmed.length, trimmed);
+          readCallback(trimmed);
+          readBuffer.current = "";
+        }
+      }
+    },
+    [readBuffer, readCallback]
+  );
+
+  // Write callback
+  const writeTx = useCallback(
+    (data) => {
+      if (peripheral) {
+        console.log("TX:", data.length, data);
+        peripheral
+          .writeCharacteristicWithoutResponseForService(
+            "6E400001-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase(),
+            "6E400002-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase(),
+            Buffer.from(data).toString("base64")
+          )
+          .catch((err) => {
+            console.error(
+              "error writing TX characteristic",
+              JSON.stringify(err)
+            );
+            setError("error writing to device");
+          });
+      }
+    },
+    [peripheral]
+  );
+
+  return [error, connectionStatus, writeTx];
+};

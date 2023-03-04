@@ -2,6 +2,7 @@
 import asyncio
 import board
 import digitalio
+import random
 
 from peripheral import BLEClient
 
@@ -10,19 +11,15 @@ led.direction = digitalio.Direction.OUTPUT
 ble_client = BLEClient()
 
 
-async def led_coro():
+async def write_random(ble_client):
     while True:
-        led.value = True
-        await asyncio.sleep(0.2)
-        led.value = False
-        await asyncio.sleep(0.2)
+        ble_client.write("{}".format(random.random()))
+        await asyncio.sleep(5 * random.random())
 
 
 async def main():
-    print("it's blinkin time")
-    led_task = asyncio.create_task(led_coro())
-
     asyncio.create_task(ble_client.connect())
-    await asyncio.gather(led_task)
+    write_task = asyncio.create_task(write_random(ble_client))
+    await asyncio.gather(write_task)
 
 asyncio.run(main())

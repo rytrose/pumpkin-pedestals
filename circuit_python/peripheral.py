@@ -26,6 +26,10 @@ class BLEClient:
             self.ble.stop_advertising()
             asyncio.create_task(self._read())
 
+    def write(self, data):
+        if self.ble.connected:
+            self.uart.write(data + "\n")
+
     async def _read(self):
         while self.ble.connected:
             l = await asyncio.create_task(self._read_line())
