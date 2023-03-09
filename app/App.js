@@ -28,7 +28,7 @@ export default function App() {
           ScreenOrientation.OrientationLock.LANDSCAPE
         );
       } catch (err) {
-        console.error(err);
+        console.log("ERROR", err);
       }
     })();
   }, []);

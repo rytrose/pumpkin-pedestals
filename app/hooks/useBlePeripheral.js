@@ -1,9 +1,17 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useReducer } from "react";
 import { LogBox, Platform, PermissionsAndroid } from "react-native";
 import { BleManager } from "react-native-ble-plx";
+import * as Location from "expo-location";
 import { Buffer } from "buffer";
 
-import * as Location from "expo-location";
+import {
+  Command,
+  CommandType,
+  commandReducer,
+  parseCommand,
+  intToAsciiHexByte,
+} from "./commands/command";
+import useHealthcheck from "./commands/useHealthcheck";
 
 // Ignore the NativeEventEmitter warning from BleManager
 LogBox.ignoreLogs(["new NativeEventEmitter"]);
@@ -49,7 +57,7 @@ export const useBlePeripheral = (readCallback) => {
         setBluetoothPermitted(true);
       }
     })();
-  }, [setError, setBluetoothPermitted]);
+  }, []);
 
   // Manage BLE adapter state
   useEffect(() => {
@@ -57,7 +65,6 @@ export const useBlePeripheral = (readCallback) => {
     if (bluetoothPermitted) {
       // Handle adapter state change
       adapterStatusSubscription = ble.onStateChange((state) => {
-        console.log("bluetooth state", state);
         if (state !== "PoweredOn") {
           setConnectionStatus(BleConnectionStatus.BLUETOOTH_UNAVAILABLE);
           setError(`unhandled bluetooth state: ${state}`);
@@ -70,9 +77,9 @@ export const useBlePeripheral = (readCallback) => {
     return () => {
       if (adapterStatusSubscription) adapterStatusSubscription.remove();
     };
-  }, [bluetoothPermitted, setConnectionStatus, setError]);
+  }, [bluetoothPermitted]);
 
-  // Maintain a peripheral connection
+  // Maintain a peripheral connection by rescanning on disconnect
   useEffect(() => {
     if (
       bluetoothPermitted &&
@@ -87,8 +94,9 @@ export const useBlePeripheral = (readCallback) => {
     console.log("scanning for device");
     ble.startDeviceScan(null, null, (err, device) => {
       if (err) {
-        console.error("blutooth scan error", JSON.stringify(err));
-        setError(`blutooth scan error: ${JSON.stringify(err)}`);
+        console.log("ERROR", "blutooth scan error", JSON.stringify(err));
+        setError("blutooth scan error, retrying in 10 seconds");
+        setTimeout(scanForPeripheral, 5000);
         return;
       }
       if (device.name === "CIRCUITPYbd17") {
@@ -106,60 +114,63 @@ export const useBlePeripheral = (readCallback) => {
             setConnectionStatus(BleConnectionStatus.CONNECTED);
           })
           .catch((err) => {
-            console.error("error connecting to device", JSON.stringify(err));
-            setError("error connecting to device");
-            setConnectionStatus(BleConnectionStatus.READY_TO_CONNECT);
-            setPeripheral(null);
+            reset(null, "unable to connect to device", null, {
+              error: JSON.stringify(err),
+            });
             scanForPeripheral();
           });
       }
     });
-  }, [setPeripheral, setConnectionStatus, setError]);
+  }, []);
 
-  // Read from RX characteristic
+  // Handle device disconnection state change
   useEffect(() => {
-    let rxSubscription;
     let deviceDisconnectedSubscription;
     if (peripheral) {
-      rxSubscription = ble.monitorCharacteristicForDevice(
-        peripheral.id,
-        "6E400001-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase(),
-        "6E400003-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase(),
-        rxListener
-      );
-
-      // Handle device connection state change
       deviceDisconnectedSubscription = ble.onDeviceDisconnected(
         peripheral.id,
-        (err, device) => {
-          console.log("device disconnected", device, err);
-          setConnectionStatus(BleConnectionStatus.READY_TO_CONNECT);
-          setPeripheral(null);
+        (err, _) => {
+          console.log("device disconnected", err ? err : "clean disconnect");
+          reset(null);
         }
       );
     }
     return () => {
-      if (rxSubscription) rxSubscription.remove();
       if (deviceDisconnectedSubscription)
         deviceDisconnectedSubscription.remove();
     };
   }, [peripheral]);
 
-  // Read callback
-  const rxListener = useCallback(
+  const rxListener = useRef(null);
+  const [pendingCommands, dispatchCommand] = useReducer(commandReducer, {});
+  const [packetID, setPacketID] = useState(0);
+
+  // The memoized RX listener used in setting up the subscription
+  // that reads the actual listener callback from a ref so state can
+  // update while the callback provided to the BLE library stays static.
+  const rxWrapper = useCallback(
     (err, characteristic) => {
+      const f = rxListener.current;
+      if (f) {
+        f(err, characteristic);
+        return;
+      }
+      console.log("ERROR", "RX callback called without listener");
+    },
+    [rxListener]
+  );
+
+  // Updates the RX listener with state
+  useEffect(() => {
+    rxListener.current = (err, characteristic) => {
       if (err) {
         if (err.errorCode === 201 || err.errorCode === 205) {
-          console.log("unable to read, device disconnected");
-          setConnectionStatus(BleConnectionStatus.READY_TO_CONNECT);
-          setPeripheral(null);
+          reset(null, "unable to read, device disconnected");
           return;
         }
-
-        console.error("error reading RX characteristic", JSON.stringify(err));
-        setError("error reading from device");
-        setConnectionStatus(BleConnectionStatus.READY_TO_CONNECT);
-        setPeripheral(null);
+        reset(null, "error reading from device", {
+          error: JSON.stringify(err),
+        });
         return;
       }
       if (characteristic) {
@@ -169,37 +180,137 @@ export const useBlePeripheral = (readCallback) => {
         readBuffer.current = read;
         if (read.endsWith("\n")) {
           const trimmed = read.trim();
-          console.log("RX:", trimmed.length, trimmed);
+          console.log("RX:", trimmed);
+          const [commandType, id, command, data] = parseCommand(trimmed);
+          if (commandType === CommandType.RESPONSE) {
+            const callback = pendingCommands[id];
+            if (callback) callback(command, data);
+            dispatchCommand({
+              type: "clear_request",
+              id: id,
+            });
+          } else {
+            if (command == Command.HEALTHCHECK) {
+              sendCommandResponse(id, command);
+            }
+          }
           readCallback(trimmed);
           readBuffer.current = "";
         }
       }
-    },
-    [readBuffer, readCallback]
-  );
+    };
+  }, [
+    rxListener,
+    pendingCommands,
+    readBuffer,
+    readCallback,
+    sendCommandResponse,
+  ]);
 
-  // Write callback
+  // Setup RX characteristic
+  useEffect(() => {
+    let rxSubscription;
+    if (peripheral) {
+      rxSubscription = ble.monitorCharacteristicForDevice(
+        peripheral.id,
+        "6E400001-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase(),
+        "6E400003-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase(),
+        rxWrapper
+      );
+    }
+    return () => {
+      if (rxSubscription && !peripheral) {
+        rxSubscription.remove();
+      }
+    };
+  }, [peripheral, rxWrapper]);
+
+  // Writes to the TX characteristic
   const writeTx = useCallback(
     (data) => {
       if (peripheral) {
-        console.log("TX:", data.length, data);
+        console.log("TX:", data);
         peripheral
           .writeCharacteristicWithoutResponseForService(
             "6E400001-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase(),
             "6E400002-B5A3-F393-E0A9-E50E24DCCA9E".toLowerCase(),
-            Buffer.from(data).toString("base64")
+            Buffer.from(data + "\n").toString("base64")
           )
           .catch((err) => {
-            console.error(
-              "error writing TX characteristic",
-              JSON.stringify(err)
-            );
-            setError("error writing to device");
+            reset(peripheral, "error writing to device", {
+              error: JSON.stringify(err),
+            });
           });
       }
     },
     [peripheral]
   );
+
+  // Sends a command request and awaits the response
+  const sendCommandRequest = useCallback(
+    (command, ...data) => {
+      const id = intToAsciiHexByte(packetID);
+      setPacketID((packetID) => packetID + 1);
+      const commandID = intToAsciiHexByte(command);
+      const dataPayload = data.join("#");
+      const packet = `${CommandType.REQUEST}${id}|${commandID}|${dataPayload}`;
+
+      return new Promise((resolve, reject) => {
+        dispatchCommand({
+          type: "pend_request",
+          id: id,
+          callback: resolve,
+        });
+        writeTx(packet);
+        setTimeout(() => {
+          reject(new Error("did not receive response within 1000ms"));
+          dispatchCommand({
+            type: "clear_request",
+            id: id,
+          });
+        }, 1000);
+      });
+    },
+    [packetID, writeTx]
+  );
+
+  // Sends a command response
+  const sendCommandResponse = useCallback(
+    (id, command, ...data) => {
+      const commandID = intToAsciiHexByte(command);
+      const dataPayload = data.join("#");
+      const packet = `${CommandType.RESPONSE}${id}|${commandID}|${dataPayload}`;
+      writeTx(packet);
+    },
+    [writeTx]
+  );
+
+  // Resets the connection state of the peripheral
+  const reset = useCallback((peripheral, err = null, storytime = {}) => {
+    if (peripheral) {
+      ble
+        .cancelDeviceConnection(peripheral.id)
+        .catch((disconnectErr) =>
+          console.log(
+            "unable to disconnect on reset",
+            JSON.stringify(disconnectErr)
+          )
+        );
+    }
+    if (err) {
+      let details = [];
+      if (storytime) {
+        details = Object.entries(storytime);
+      }
+      console.log("ERROR", err, ...details);
+      setError(err);
+    }
+    setConnectionStatus(BleConnectionStatus.READY_TO_CONNECT);
+    setPeripheral(null);
+  }, []);
+
+  // Sets up a healthcheck loop
+  useHealthcheck(peripheral, sendCommandRequest, reset);
 
   return [error, connectionStatus, writeTx];
 };
