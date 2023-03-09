@@ -11,12 +11,12 @@ Communication across the BLE UART characteristic follows a simple ID-command-dat
   - A command identifier indicating whether it is a request or response, the purpose of the packet, and the expected data format
   - Any data associated with a command
 - ID-command-data packets are delimited by a newline (`\n`)
-- The ID, command identifier, and data are delimited by a (`|`)
-  - Every packet must contain two delimeters, even if no data is provided
+- The ID, command identifier, and data are delimited by a pipe (`|`)
+  - Every packet must contain two pipe delimiters, even if no data is provided
 - An ID is three ASCII bytes:
   - The first byte should be `0` if the command is a request, and `1` if the command is a response
   - The second and third bytes represent one hex byte of a counter
-  - On a new connection, clients should begin with a counter value of `00` and every subsequent packet increase the counter by one, rolling over from `ff` to `00` when reached
+  - Clients should begin with a counter value of `00` and every subsequent packet increase the counter by one, rolling over from `ff` to `00` when reached
   - IDs should be echoed back on the response to a request
   - Every request should receive a response
 - A command identifier is three ASCII bytes: 
@@ -42,13 +42,13 @@ Examples:
 
 `001|01|1#2#3\n`
 - Command type: request `0`
-- ID `01`
+- ID: `01`
 - Command Request, `01`
 - Data: [1, 2, 3]
 
 `101|01|1#2#3\n`
 - Command type: response `1`
-- ID `01`
+- ID: `01`
 - Command Response, `01`
 - Data: [1, 2, 3]
 
