@@ -63,3 +63,48 @@ Examples:
   - Data: None
 
 Healthchecks should be initiated by each client once per second. If a client does not receive a response within one second three consecutive times, the client should close the connection.
+
+### Get LEDs
+
+- Command: `01`
+- Request
+  - Data: None
+- Response
+  - Data:
+    - An array of all cuurently connected LEDs, where each index is 8 ASCII characters representing 4 bytes in hex:
+      - Byte 1 (MSB): The I2C address of the pedestal
+      - Byte 2: The red value of the LED
+      - Byte 3: The green value the LED
+      - Byte 4: The blue value the LED
+
+Example:
+- Request
+  - `000|01|`
+- Response
+  - `100|01|72FFE600#734959E6#748C1424`
+    - I2C address `0x72`, hex color #FFE600 (yellow)
+    - I2C address `0x73`, hex color #4959E6 (blue)
+    - I2C address `0x74`, hex color #8C1424 (red)
+### Set LEDs
+
+- Command: `02`
+- Request
+  - Data:
+    - An array of LEDs to update with the provided color, where each index is 8 ASCII characters representing 4 bytes in hex:
+      - Byte 1 (MSB): The I2C address of the pedestal
+      - Byte 2: The desired red value of the LED
+      - Byte 3: The desired green value the LED
+      - Byte 4: The desired blue value the LED
+- Response
+  - Data:
+    - An array of updated LED addresses
+
+Example:
+- Request
+  - `000|02|72FFE600#734959E6`
+    - I2C address `0x72`, hex color #FFE600 (yellow)
+    - I2C address `0x73`, hex color #4959E6 (blue)
+- Response
+  - `100|02|72#73`
+    - I2C address `0x72`
+    - I2C address `0x73`

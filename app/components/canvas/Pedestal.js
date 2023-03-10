@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { Skia, Group, Path, vec } from "@shopify/react-native-skia";
 import Touchable, { useGestureHandler } from "react-native-skia-gesture";
 
-export const PedestalOrienation = {
+export const PedestalOrientation = {
   POINTY_TOP: "pointy_top",
   FLAT_TOP: "flat_top",
 };
@@ -11,14 +11,13 @@ const Pedestal = ({
   x = 0,
   y = 0,
   size = 100,
-  orientation = PedestalOrienation.POINTY_TOP,
-  neighborIndices = [],
-  showNeighbors = false,
+  orientation = PedestalOrientation.POINTY_TOP,
+  hub = false,
 }) => {
   [color, setColor] = useState("blue");
 
   let width, height;
-  if (orientation === PedestalOrienation.POINTY_TOP) {
+  if (orientation === PedestalOrientation.POINTY_TOP) {
     height = size * 2;
     width = (height * Math.sqrt(3)) / 2;
   } else {
@@ -27,16 +26,6 @@ const Pedestal = ({
   }
 
   const translation = [{ translateX: x }, { translateY: y }];
-
-  const neighbors = generateNeighbors(
-    width,
-    height,
-    orientation,
-    neighborIndices,
-    {
-      style: "stroke",
-    }
-  );
 
   const onTouchStart = useCallback(
     (touchInfo, context) => {
@@ -49,7 +38,18 @@ const Pedestal = ({
     (path, point) => {
       const transformedX = point.x - x;
       const transformedY = point.y - y;
-      return path.contains(transformedX, transformedY);
+      const contains = path.contains(transformedX, transformedY);
+      if (hub)
+        console.log(
+          point.x,
+          point.y,
+          x,
+          y,
+          transformedX,
+          transformedY,
+          contains
+        );
+      return contains;
     },
     [x, y]
   );
@@ -64,12 +64,11 @@ const Pedestal = ({
       <Touchable.Path
         path={hexagonPath(width, height, orientation)}
         style="stroke"
-        color={color}
+        color={hub ? "black" : color}
         start={0}
         end={1}
         {...gestureHandler}
       />
-      {showNeighbors && neighbors.length > 0 && neighbors}
     </Group>
   );
 };
@@ -102,7 +101,7 @@ const generateNeighbors = (
     let translateX, translateY;
     switch (i) {
       case 0:
-        if (orientation === PedestalOrienation.POINTY_TOP) {
+        if (orientation === PedestalOrientation.POINTY_TOP) {
           translateX = width / 2;
           translateY = (-3 * height) / 4;
         } else {
@@ -111,7 +110,7 @@ const generateNeighbors = (
         }
         break;
       case 1:
-        if (orientation === PedestalOrienation.POINTY_TOP) {
+        if (orientation === PedestalOrientation.POINTY_TOP) {
           translateX = width;
           translateY = 0;
         } else {
@@ -120,7 +119,7 @@ const generateNeighbors = (
         }
         break;
       case 2:
-        if (orientation === PedestalOrienation.POINTY_TOP) {
+        if (orientation === PedestalOrientation.POINTY_TOP) {
           translateX = width / 2;
           translateY = (3 * height) / 4;
         } else {
@@ -129,7 +128,7 @@ const generateNeighbors = (
         }
         break;
       case 3:
-        if (orientation === PedestalOrienation.POINTY_TOP) {
+        if (orientation === PedestalOrientation.POINTY_TOP) {
           translateX = -width / 2;
           translateY = (3 * height) / 4;
         } else {
@@ -138,7 +137,7 @@ const generateNeighbors = (
         }
         break;
       case 4:
-        if (orientation === PedestalOrienation.POINTY_TOP) {
+        if (orientation === PedestalOrientation.POINTY_TOP) {
           translateX = -width;
           translateY = 0;
         } else {
@@ -147,7 +146,7 @@ const generateNeighbors = (
         }
         break;
       case 5:
-        if (orientation === PedestalOrienation.POINTY_TOP) {
+        if (orientation === PedestalOrientation.POINTY_TOP) {
           translateX = -width / 2;
           translateY = (-3 * height) / 4;
         } else {
@@ -179,7 +178,7 @@ const generateNeighbors = (
 // All credit to: https://codepen.io/wvr/pen/WrNgJp
 const hexagonPath = (width, height, orientation) => {
   let a, b, c, d, e, f;
-  if (orientation === PedestalOrienation.POINTY_TOP) {
+  if (orientation === PedestalOrientation.POINTY_TOP) {
     a = vec(width / 2, 0);
     b = vec(width, height / 4);
     c = vec(width, (height * 3) / 4);

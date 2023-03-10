@@ -1,15 +1,22 @@
 import { useCallback } from "react";
+import { Command, parseCommand } from "./commands/command";
 import { BleConnectionStatus } from "./useBlePeripheral";
 
-export const useMockBlePeripheral = (readCallback) => {
-  const writeTx = useCallback((data) => {
-    // Echo back written data
-    // TODO: mock out expected behavior
-    readCallback(data);
+export const useMockBlePeripheral = () => {
+  const getLEDs = useCallback(async () => {
+    return {
+      30: "#1abf32",
+      31: "#99931a",
+      32: "#bbbcde",
+    };
+  }, []);
+
+  const setLEDs = useCallback(async (ledState) => {
+    return;
   }, []);
 
   const error = null;
-  const connectionStatus = BleConnectionStatus.READY_TO_CONNECT;
+  const connectionStatus = BleConnectionStatus.CONNECTED;
 
-  return [error, connectionStatus, writeTx];
+  return [error, connectionStatus, getLEDs, setLEDs];
 };

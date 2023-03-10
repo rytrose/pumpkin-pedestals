@@ -23,7 +23,7 @@ export const BleConnectionStatus = {
   CONNECTED: "connected",
 };
 
-export const useBlePeripheral = (readCallback) => {
+export const useBlePeripheral = () => {
   const [peripheral, setPeripheral] = useState(null);
   const [bluetoothPermitted, setBluetoothPermitted] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState(
@@ -194,18 +194,11 @@ export const useBlePeripheral = (readCallback) => {
               sendCommandResponse(id, command);
             }
           }
-          readCallback(trimmed);
           readBuffer.current = "";
         }
       }
     };
-  }, [
-    rxListener,
-    pendingCommands,
-    readBuffer,
-    readCallback,
-    sendCommandResponse,
-  ]);
+  }, [rxListener, pendingCommands, readBuffer, sendCommandResponse]);
 
   // Setup RX characteristic
   useEffect(() => {
@@ -312,5 +305,50 @@ export const useBlePeripheral = (readCallback) => {
   // Sets up a healthcheck loop
   useHealthcheck(peripheral, sendCommandRequest, reset);
 
-  return [error, connectionStatus, writeTx];
+  // Get LEDs callback
+  const getLEDs = useCallback(async () => {
+    const ledState = {};
+    if (peripheral) {
+      const [_, data] = await sendCommandRequest(Command.GET_LEDS);
+      for (let led of data) {
+        const address = led.slice(0, 2);
+        const color = `#${led.slice(2)}`;
+        ledState[address] = color;
+      }
+    }
+    return ledState;
+  }, [peripheral, sendCommandRequest]);
+
+  // Set LEDs callback
+  const setLEDs = useCallback(
+    async (ledState) => {
+      if (peripheral) {
+        const reqData = Object.entries(ledState).map(([address, color]) => {
+          const rawColor = color.slice(1);
+          return `${address}${rawColor}`;
+        });
+        const [_, resAddrs] = await sendCommandRequest(
+          Command.GET_LEDS,
+          ...reqData
+        );
+        const reqAddrs = Object.keys(reqData);
+        const missingAddrs = [];
+        for (let addr of reqAddrs) {
+          if (!resAddrs.includes(addr)) missingAddrs.push(addr);
+        }
+        if (missingAddrs.length > 0) {
+          console.log(
+            "ERROR",
+            "missing LEDs in setLEDs response:",
+            missingAddrs
+          );
+          return;
+        }
+      }
+      return;
+    },
+    [peripheral, sendCommandRequest]
+  );
+
+  return [error, connectionStatus, getLEDs, setLEDs];
 };
