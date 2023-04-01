@@ -305,11 +305,11 @@ export const useBlePeripheral = () => {
   // Sets up a healthcheck loop
   useHealthcheck(peripheral, sendCommandRequest, reset);
 
-  // Get LEDs callback
-  const getLEDs = useCallback(async () => {
+  // Callback to execute the Get Pedestals command
+  const getPedestals = useCallback(async () => {
     const ledState = {};
     if (peripheral) {
-      const [_, data] = await sendCommandRequest(Command.GET_LEDS);
+      const [_, data] = await sendCommandRequest(Command.GET_PEDESTALS);
       for (let led of data) {
         const address = led.slice(0, 2);
         const color = `#${led.slice(2)}`;
@@ -319,8 +319,8 @@ export const useBlePeripheral = () => {
     return ledState;
   }, [peripheral, sendCommandRequest]);
 
-  // Set LEDs callback
-  const setLEDs = useCallback(
+  // Callback to execute the Set Pedestals Color command
+  const setPedestalsColor = useCallback(
     async (ledState) => {
       if (peripheral) {
         const reqData = Object.entries(ledState).map(([address, color]) => {
@@ -328,7 +328,7 @@ export const useBlePeripheral = () => {
           return `${address}${rawColor}`;
         });
         const [_, resAddrs] = await sendCommandRequest(
-          Command.GET_LEDS,
+          Command.SET_PEDESTALS_COLOR,
           ...reqData
         );
         const reqAddrs = Object.keys(reqData);
@@ -339,7 +339,7 @@ export const useBlePeripheral = () => {
         if (missingAddrs.length > 0) {
           console.log(
             "ERROR",
-            "missing LEDs in setLEDs response:",
+            "missing expected addresses in Set Pedestals Color response:",
             missingAddrs
           );
           return;
@@ -350,5 +350,5 @@ export const useBlePeripheral = () => {
     [peripheral, sendCommandRequest]
   );
 
-  return [error, connectionStatus, getLEDs, setLEDs];
+  return [error, connectionStatus, getPedestals, setPedestalsColor];
 };

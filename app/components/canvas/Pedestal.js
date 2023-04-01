@@ -55,7 +55,8 @@ const Pedestal = ({
       <Touchable.Path
         transform={translation}
         path={hexagonPath(width, height, orientation)}
-        style="fill"
+        style="stroke"
+        strokeWidth={1}
         start={0}
         end={1}
         color={color}

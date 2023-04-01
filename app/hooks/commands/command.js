@@ -7,8 +7,8 @@ export const CommandType = {
 // Enumerates the available commands
 export const Command = {
   HEALTHCHECK: 0,
-  GET_LEDS: 1,
-  SET_LEDS: 2,
+  GET_PEDESTALS: 1,
+  SET_PEDESTALS_COLOR: 2,
 };
 
 // Converts an integer into a 2 character hex string, mod 256

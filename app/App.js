@@ -91,21 +91,21 @@ export default function App() {
     })();
   }, []);
 
-  const [error, connectionStatus, getLEDs, setLEDs] = MOCK_BLE
+  const [bleError, connectionStatus, getPedestals, setPedestalsColor] = MOCK_BLE
     ? useMockBlePeripheral()
     : useBlePeripheral();
 
-  const [layoutKnown, setLayoutKnown] = useState(false);
-  const [ledState, setLEDState] = useState({});
-
-  useEffect(() => {
+  const [pendingPedestals, setPendingPedestals] = useState({});
+  const resetPedestals = useCallback(() => {
     (async () => {
-      if (connectionStatus === BleConnectionStatus.CONNECTED && !layoutKnown) {
-        const ledState = await getLEDs();
-        setLEDState(ledState);
+      if (connectionStatus === BleConnectionStatus.CONNECTED) {
+        const pedestals = await getPedestals();
+        setPendingPedestals(pedestals);
+        return;
       }
+      // TODO: toast error
     })();
-  }, [connectionStatus, layoutKnown]);
+  }, [connectionStatus]);
 
   const [orientation, setOrientation] = useState(
     PedestalOrientation.POINTY_TOP
@@ -180,9 +180,11 @@ export default function App() {
         </Touchable.Canvas>
       </View>
       <View className="flex-1 flex-row mx-2 border">
-        <Connectivity connectionStatus={connectionStatus} />
+        <View className="flex-1 border">
+          <Connectivity connectionStatus={connectionStatus} />
+          <Button title="Reset pedestals" onPress={resetPedestals} />
+        </View>
         <View className="border flex-1">
-          <Text>Error: {error || "none"}</Text>
           <Button
             title="Orientation"
             onPress={() =>
