@@ -9,6 +9,7 @@ export const Command = {
   HEALTHCHECK: 0,
   GET_PEDESTALS: 1,
   SET_PEDESTALS_COLOR: 2,
+  BLINK_PEDESTAL: 3,
 };
 
 // Converts an integer into a 2 character hex string, mod 256

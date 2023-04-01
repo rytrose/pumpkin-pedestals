@@ -11,12 +11,22 @@ export const useMockBlePeripheral = () => {
     };
   }, []);
 
-  const setPedestalsColor = useCallback(async (ledState) => {
+  const setPedestalsColor = useCallback(async (pedestalsColor) => {
+    console.log("setting pedestals color", pedestalsColor);
+    return;
+  }, []);
+
+  const blinkPedestal = useCallback(async (address) => {
+    console.log("blinking", address);
     return;
   }, []);
 
   const error = null;
   const connectionStatus = BleConnectionStatus.CONNECTED;
 
-  return [error, connectionStatus, getPedestals, setPedestalsColor];
+  return [
+    error,
+    connectionStatus,
+    { getPedestals, setPedestalsColor, blinkPedestal },
+  ];
 };

@@ -350,5 +350,31 @@ export const useBlePeripheral = () => {
     [peripheral, sendCommandRequest]
   );
 
-  return [error, connectionStatus, getPedestals, setPedestalsColor];
+  // Callback to execute the Blink Pedestal command
+  const blinkPedestal = useCallback(
+    async (address) => {
+      if (peripheral) {
+        const [_, [blinkingAddress]] = await sendCommandRequest(
+          Command.BLINK_PEDESTAL,
+          address
+        );
+        if (blinkingAddress !== address) {
+          console.log(
+            "ERROR",
+            "missing expected address in Blink Pedestal response:",
+            address
+          );
+          return;
+        }
+      }
+      return;
+    },
+    [peripheral, sendCommandRequest]
+  );
+
+  return [
+    error,
+    connectionStatus,
+    { getPedestals, setPedestalsColor, blinkPedestal },
+  ];
 };

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Skia, Circle, vec, Paint } from "@shopify/react-native-skia";
+import { Skia, vec } from "@shopify/react-native-skia";
 import Touchable, { useGestureHandler } from "react-native-skia-gesture";
 
 export const PedestalOrientation = {
@@ -13,10 +13,10 @@ const Pedestal = ({
   size = 100,
   orientation = PedestalOrientation.POINTY_TOP,
   hub = false,
+  color = undefined,
+  onPress = undefined,
   id,
 }) => {
-  const [color, setColor] = useState();
-
   let width, height;
   if (orientation === PedestalOrientation.POINTY_TOP) {
     height = size * 2;
@@ -31,8 +31,9 @@ const Pedestal = ({
   const onTouchStart = useCallback(
     (touchInfo, context) => {
       console.log("touched", id);
+      if (!!onPress) onPress(id);
     },
-    [id, setColor]
+    [id]
   );
 
   const pathContains = useCallback(
@@ -55,11 +56,11 @@ const Pedestal = ({
       <Touchable.Path
         transform={translation}
         path={hexagonPath(width, height, orientation)}
-        style="stroke"
+        style={hub || !!color ? "fill" : "stroke"}
         strokeWidth={1}
         start={0}
         end={1}
-        color={color}
+        color={color || "black"}
         {...gestureHandler}
       />
     </>

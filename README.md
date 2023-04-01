@@ -56,15 +56,17 @@ Examples:
 
 ### Healthcheck
 
+A command to test client-server connectivity. Healthchecks should be initiated by each client once per second. If a client does not receive a response within one second three consecutive times, the client should close the connection.
+
 - Command: `00`
 - Request
   - Data: None
 - Response
   - Data: None
 
-Healthchecks should be initiated by each client once per second. If a client does not receive a response within one second three consecutive times, the client should close the connection.
-
 ### Get Pedestals
+
+Retrieves the currently connected pedestal addresses and their current LED color. Pedestal addresses are the I2C device address of the pedestal, aside from the hub which is always `00`.
 
 - Command: `01`
 - Request
@@ -88,6 +90,8 @@ Example:
   
 ### Set Pedestals Color
 
+Sets the LED color of the provided pedestals. If blinking, setting a pedestal's LED color with this command will stop blinking.
+
 - Command: `02`
 - Request
   - Data:
@@ -109,3 +113,25 @@ Example:
   - `100|02|72#73`
     - I2C address `0x72`
     - I2C address `0x73`
+
+### Blink Pedestal
+
+Starts blinking the LED of the pedestal at the provided address.
+
+- Command: `03`
+- Request
+  - Data:
+    - A 1 byte pedestal I2C address in hex
+- Response
+  - Data:
+    - The I2C address from the request if present, otherwise no data.
+
+Example:
+- Request
+  - `000|03|72`
+    - I2C address `0x72`
+- Response (success)
+  - `100|03|72`
+    - I2C address `0x72`
+- Response (failure)
+  - `100|03|`

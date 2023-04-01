@@ -19,6 +19,7 @@ import {
 } from "./hooks/useBlePeripheral";
 import { useMockBlePeripheral } from "./hooks/useMockBlePeripheral";
 import Connectivity from "./components/Connectivity";
+import Configuration from "./components/Configuration";
 
 // For development purposes
 const MOCK_BLE = true;
@@ -91,7 +92,7 @@ export default function App() {
     })();
   }, []);
 
-  const [bleError, connectionStatus, getPedestals, setPedestalsColor] = MOCK_BLE
+  const [bleError, connectionStatus, commands] = MOCK_BLE
     ? useMockBlePeripheral()
     : useBlePeripheral();
 
@@ -99,7 +100,7 @@ export default function App() {
   const resetPedestals = useCallback(() => {
     (async () => {
       if (connectionStatus === BleConnectionStatus.CONNECTED) {
-        const pedestals = await getPedestals();
+        const pedestals = await commands.getPedestals();
         setPendingPedestals(pedestals);
         return;
       }
@@ -182,7 +183,11 @@ export default function App() {
       <View className="flex-1 flex-row mx-2 border">
         <View className="flex-1 border">
           <Connectivity connectionStatus={connectionStatus} />
-          <Button title="Reset pedestals" onPress={resetPedestals} />
+          <Configuration
+            pendingPedestals={pendingPedestals}
+            resetPedestals={resetPedestals}
+            blinkPedestal={commands.blinkPedestal}
+          />
         </View>
         <View className="border flex-1">
           <Button
