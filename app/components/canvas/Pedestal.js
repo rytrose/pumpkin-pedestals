@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Skia, Group, Path, vec } from "@shopify/react-native-skia";
+import { Skia, Circle, vec, Paint } from "@shopify/react-native-skia";
 import Touchable, { useGestureHandler } from "react-native-skia-gesture";
 
 export const PedestalOrientation = {
@@ -13,8 +13,9 @@ const Pedestal = ({
   size = 100,
   orientation = PedestalOrientation.POINTY_TOP,
   hub = false,
+  id,
 }) => {
-  [color, setColor] = useState("blue");
+  const [color, setColor] = useState();
 
   let width, height;
   if (orientation === PedestalOrientation.POINTY_TOP) {
@@ -29,9 +30,9 @@ const Pedestal = ({
 
   const onTouchStart = useCallback(
     (touchInfo, context) => {
-      setColor("red");
+      console.log("touched", id);
     },
-    [setColor]
+    [id, setColor]
   );
 
   const pathContains = useCallback(
@@ -39,16 +40,6 @@ const Pedestal = ({
       const transformedX = point.x - x;
       const transformedY = point.y - y;
       const contains = path.contains(transformedX, transformedY);
-      if (hub)
-        console.log(
-          point.x,
-          point.y,
-          x,
-          y,
-          transformedX,
-          transformedY,
-          contains
-        );
       return contains;
     },
     [x, y]
@@ -60,120 +51,21 @@ const Pedestal = ({
   });
 
   return (
-    <Group transform={translation}>
+    <>
       <Touchable.Path
+        transform={translation}
         path={hexagonPath(width, height, orientation)}
-        style="stroke"
-        color={hub ? "black" : color}
+        style="fill"
         start={0}
         end={1}
+        color={color}
         {...gestureHandler}
       />
-    </Group>
+    </>
   );
 };
 
 export default Pedestal;
-
-// Many thanks to https://www.redblobgames.com/grids/hexagons/
-const generateNeighbors = (
-  width,
-  height,
-  orientation,
-  neighborIndices = [],
-  pathProps
-) => {
-  /*
-  Sides are indexed as follows (clockwise):
-      5
-      __
-  4 /    \ 0
-  3 \ __ / 1
-      2
-
-   5 / \ 0
-  4 |   | 1
-   3 \ / 2
-*/
-
-  let generatedNeighbors = [];
-  for (let i of neighborIndices) {
-    let translateX, translateY;
-    switch (i) {
-      case 0:
-        if (orientation === PedestalOrientation.POINTY_TOP) {
-          translateX = width / 2;
-          translateY = (-3 * height) / 4;
-        } else {
-          translateX = (3 * width) / 4;
-          translateY = -height / 2;
-        }
-        break;
-      case 1:
-        if (orientation === PedestalOrientation.POINTY_TOP) {
-          translateX = width;
-          translateY = 0;
-        } else {
-          translateX = (3 * width) / 4;
-          translateY = height / 2;
-        }
-        break;
-      case 2:
-        if (orientation === PedestalOrientation.POINTY_TOP) {
-          translateX = width / 2;
-          translateY = (3 * height) / 4;
-        } else {
-          translateX = 0;
-          translateY = height;
-        }
-        break;
-      case 3:
-        if (orientation === PedestalOrientation.POINTY_TOP) {
-          translateX = -width / 2;
-          translateY = (3 * height) / 4;
-        } else {
-          translateX = -(3 * width) / 4;
-          translateY = height / 2;
-        }
-        break;
-      case 4:
-        if (orientation === PedestalOrientation.POINTY_TOP) {
-          translateX = -width;
-          translateY = 0;
-        } else {
-          translateX = -(3 * width) / 4;
-          translateY = -height / 2;
-        }
-        break;
-      case 5:
-        if (orientation === PedestalOrientation.POINTY_TOP) {
-          translateX = -width / 2;
-          translateY = (-3 * height) / 4;
-        } else {
-          translateX = 0;
-          translateY = -height;
-        }
-        break;
-      default:
-        throw new Error(`neighbor index must be 0-5, was: ${i}`);
-    }
-    generatedNeighbors.push(
-      <Group
-        key={i}
-        transform={[{ translateX: translateX }, { translateY: translateY }]}
-      >
-        <Path
-          path={hexagonPath(width, height, orientation)}
-          start={0}
-          end={1}
-          {...pathProps}
-        />
-      </Group>
-    );
-  }
-
-  return generatedNeighbors;
-};
 
 // All credit to: https://codepen.io/wvr/pen/WrNgJp
 const hexagonPath = (width, height, orientation) => {

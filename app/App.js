@@ -97,11 +97,6 @@ export default function App() {
 
   const [layoutKnown, setLayoutKnown] = useState(false);
   const [ledState, setLEDState] = useState({});
-  const [pedestals, setPedestals] = useState([]);
-  const unassignedPedestals = Object.keys(ledState).filter((addr) => {
-    const knownAddrs = pedestals.map((pedestal) => pedestal.key);
-    return !knownAddrs.includes(addr);
-  });
 
   useEffect(() => {
     (async () => {
@@ -168,7 +163,6 @@ export default function App() {
             >
               <Paint style="stroke" color={"black"} />
             </Rect>
-
             {positions.map((position, i) => {
               return (
                 <Pedestal
@@ -176,7 +170,8 @@ export default function App() {
                   x={position.x}
                   y={position.y}
                   size={size}
-                  key={i}
+                  key={`pedestal-${i}`}
+                  id={`pedestal-${i}`}
                   hub={i === Math.floor((numHexWidth * numHexHeight) / 2)}
                 />
               );
@@ -187,7 +182,6 @@ export default function App() {
       <View className="flex-1 flex-row mx-2 border">
         <Connectivity connectionStatus={connectionStatus} />
         <View className="border flex-1">
-          <Text>Pedestals to assign: {unassignedPedestals.length}</Text>
           <Text>Error: {error || "none"}</Text>
           <Button
             title="Orientation"
