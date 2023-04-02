@@ -116,22 +116,24 @@ Example:
 
 ### Blink Pedestal
 
-Starts blinking the LED of the pedestal at the provided address.
+Starts blinking the LED of the pedestals at the provided addresses.
 
 - Command: `03`
 - Request
   - Data:
-    - A 1 byte pedestal I2C address in hex
+    - A list of 1 byte pedestal I2C address in hex
 - Response
   - Data:
-    - The I2C address from the request if present, otherwise no data.
+    - An array of pedestal I2C addresses set to blinking
 
 Example:
 - Request
-  - `000|03|72`
+  - `000|03|72#73`
     - I2C address `0x72`
+    - I2C address `0x73`
 - Response (success)
-  - `100|03|72`
+  - `100|03|72#73`
     - I2C address `0x72`
+    - I2C address `0x73`
 - Response (failure)
   - `100|03|`

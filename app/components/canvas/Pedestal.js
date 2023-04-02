@@ -17,6 +17,8 @@ const Pedestal = ({
   onPress = undefined,
   id,
 }) => {
+  const [address, setAddress] = useState();
+
   let width, height;
   if (orientation === PedestalOrientation.POINTY_TOP) {
     height = size * 2;

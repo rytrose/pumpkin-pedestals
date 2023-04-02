@@ -5,6 +5,7 @@ import { BleConnectionStatus } from "./useBlePeripheral";
 export const useMockBlePeripheral = () => {
   const getPedestals = useCallback(async () => {
     return {
+      "00": "#ffffff",
       30: "#1abf32",
       31: "#99931a",
       32: "#bbbcde",
