@@ -21,10 +21,10 @@ const Connectivity = ({ connectionStatus }) => {
   }
 
   return (
-    <View className="flex-1 border">
-      <Text className="font-bold text-md">Bluetooth status</Text>
-      <View className="flex-row">
-        <Text className={`${color} text-sm pr-1`}>{text}</Text>
+    <View className="flex-0 flex-row space-x-1 border">
+      <Text className="font-bold text-md">Bluetooth status:</Text>
+      <View className="flex-row space-x-1">
+        <Text className={`${color} text-sm`}>{text}</Text>
         {loading && <Loading width={20} height={20} />}
       </View>
     </View>

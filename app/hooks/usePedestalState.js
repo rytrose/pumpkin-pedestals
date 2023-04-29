@@ -9,7 +9,7 @@ const makeState = (orientation, hexSize, positions) => {
     y: position.y,
     size: hexSize,
     key: `pedestal-${i}`,
-    id: `pedestal-${i}`,
+    id: i,
     hub:
       i ===
       Math.floor(positions.length / 2) +
@@ -36,6 +36,28 @@ const pedestalStateReducer = (state, action) => {
         hexSize
       );
       return makeState(orientation, hexSize, positions);
+    case "set_color":
+      return state.map((pedestal, i) => {
+        if (action.index === i) {
+          return {
+            ...pedestal,
+            address: action.address,
+            color: action.color,
+          };
+        }
+        return pedestal;
+      });
+    case "set_hub_color":
+      return state.map((pedestal) => {
+        if (pedestal.hub) {
+          return {
+            ...pedestal,
+            address: "00",
+            color: action.color,
+          };
+        }
+        return pedestal;
+      });
     default:
       console.log("ERROR", `unknown action ${action.type}`);
       return [];

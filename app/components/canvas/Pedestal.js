@@ -32,10 +32,9 @@ const Pedestal = ({
 
   const onTouchStart = useCallback(
     (touchInfo, context) => {
-      console.log("touched", id);
       if (!!onPress) onPress(id);
     },
-    [id]
+    [id, onPress]
   );
 
   const pathContains = useCallback(

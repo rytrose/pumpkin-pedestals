@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect, useRef } from "react";
 import { Button, useWindowDimensions, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as ScreenOrientation from "expo-screen-orientation";
-import { Rect, Paint, Group } from "@shopify/react-native-skia";
+import { Rect, Paint, Group, add } from "@shopify/react-native-skia";
 import Touchable from "react-native-skia-gesture";
 
 import Pedestal, { PedestalOrientation } from "./components/canvas/Pedestal";
@@ -37,18 +37,6 @@ export default function App() {
     ? useMockBlePeripheral()
     : useBlePeripheral();
 
-  const [pendingPedestals, setPendingPedestals] = useState({});
-  const resetPedestals = useCallback(() => {
-    (async () => {
-      if (connectionStatus === BleConnectionStatus.CONNECTED) {
-        const pedestals = await commands.getPedestals();
-        setPendingPedestals(pedestals);
-        return;
-      }
-      // TODO: toast error
-    })();
-  }, [connectionStatus]);
-
   const [orientation, setOrientation] = useState(
     PedestalOrientation.POINTY_TOP
   );
@@ -60,15 +48,77 @@ export default function App() {
   // The main state containing the pedestals
   const [pedestalState, dispatchPedestalState] = usePedestalState();
 
-  // Reset pedestal state if layout parameters change
-  useEffect(() => {
+  const dispatchResetPedestalState = (
+    canvasWidth,
+    canvasHeight,
+    orientation
+  ) => {
     dispatchPedestalState({
       type: "reset",
       canvasWidth: canvasWidth,
       canvasHeight: canvasHeight,
       orientation: orientation,
     });
+  };
+
+  // The state of any unset pedestals
+  const [pendingPedestals, setPendingPedestals] = useState([]);
+  const resetPedestals = useCallback(() => {
+    (async () => {
+      dispatchResetPedestalState(canvasWidth, canvasHeight, orientation);
+      if (connectionStatus === BleConnectionStatus.CONNECTED) {
+        const pedestals = await commands.getPedestals();
+        let pedestalsWithoutHub = Object.entries(pedestals).filter(
+          ([address, color]) => {
+            if (address === "00") {
+              dispatchPedestalState({
+                type: "set_hub_color",
+                color: color,
+              });
+              return false;
+            }
+            return true;
+          }
+        );
+        setPendingPedestals(pedestalsWithoutHub);
+        return;
+      }
+      // TODO: toast error
+    })();
+  }, [connectionStatus, canvasWidth, canvasHeight, orientation]);
+
+  // Reset pedestals if layout parameters change
+  useEffect(() => {
+    resetPedestals();
   }, [canvasWidth, canvasHeight, orientation]);
+
+  // Whenever there are pending pedestals, blink the first outstanding
+  useEffect(() => {
+    if (pendingPedestals.length > 0) {
+      const [address, _] = pendingPedestals[0];
+      (async () => {
+        await commands.blinkPedestal(address);
+      })();
+    }
+  }, [pendingPedestals]);
+
+  // Specifies behavior when a pedestal is pressed on the app
+  const onPedestalPress = useCallback(
+    (id) => {
+      // Set pedestal if any are outstanding
+      if (pendingPedestals.length > 0) {
+        const [address, color] = pendingPedestals.shift();
+        dispatchPedestalState({
+          type: "set_color",
+          index: id,
+          address: address,
+          color: color,
+        });
+        setPendingPedestals([...pendingPedestals]);
+      }
+    },
+    [pendingPedestals]
+  );
 
   return (
     <View className="flex-1 flex-col items-center">
@@ -86,32 +136,22 @@ export default function App() {
             >
               <Paint style="stroke" color={"black"} />
             </Rect>
-            {pedestalState.map((pedestal, i) => {
-              return <Pedestal {...pedestal} />;
+            {pedestalState.map((pedestal) => {
+              return <Pedestal {...pedestal} onPress={onPedestalPress} />;
             })}
           </Group>
         </Touchable.Canvas>
       </View>
       <View className="flex-1 flex-row mx-2 border">
-        <View className="flex-1 border">
-          <Connectivity connectionStatus={connectionStatus} />
+        <View className="flex-1 border justify-between">
           <Configuration
             pendingPedestals={pendingPedestals}
             resetPedestals={resetPedestals}
+            setOrientation={setOrientation}
           />
+          <Connectivity connectionStatus={connectionStatus} />
         </View>
-        <View className="border flex-1">
-          <Button
-            title="Orientation"
-            onPress={() =>
-              setOrientation((lastOrientation) =>
-                lastOrientation === PedestalOrientation.POINTY_TOP
-                  ? PedestalOrientation.FLAT_TOP
-                  : PedestalOrientation.POINTY_TOP
-              )
-            }
-          />
-        </View>
+        <View className="flex-1 border"></View>
       </View>
       <StatusBar style="auto" hidden />
     </View>
