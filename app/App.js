@@ -1,5 +1,5 @@
-import { useCallback, useState, useEffect, useRef } from "react";
-import { Button, useWindowDimensions, View } from "react-native";
+import { useCallback, useState, useEffect } from "react";
+import { useWindowDimensions, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as ScreenOrientation from "expo-screen-orientation";
 import { Rect, Paint, Group, add } from "@shopify/react-native-skia";
@@ -11,7 +11,6 @@ import {
   useBlePeripheral,
 } from "./hooks/useBlePeripheral";
 import { useMockBlePeripheral } from "./hooks/useMockBlePeripheral";
-import { definePedestalSize, makePedestalPositions } from "./utils/geometry";
 import Connectivity from "./components/Connectivity";
 import Configuration from "./components/Configuration";
 import usePedestalState from "./hooks/usePedestalState";

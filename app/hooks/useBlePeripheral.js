@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useReducer } from "react";
-import { LogBox, Platform, PermissionsAndroid } from "react-native";
+import { Platform, PermissionsAndroid } from "react-native";
 import { BleManager } from "react-native-ble-plx";
 import * as Location from "expo-location";
 import { Buffer } from "buffer";
@@ -12,9 +12,6 @@ import {
   intToAsciiHexByte,
 } from "./commands/command";
 import useHealthcheck from "./commands/useHealthcheck";
-
-// Ignore the NativeEventEmitter warning from BleManager
-LogBox.ignoreLogs(["new NativeEventEmitter"]);
 const ble = new BleManager();
 
 export const BleConnectionStatus = {
