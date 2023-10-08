@@ -25,7 +25,8 @@ async def websocket_handler(request):
 
 def main():
     ble_client = BLEClient()
-    asyncio.create_task(ble_client.connect())
+    # TODO: figure out why uncommenting this prevents websockets from connecting
+    # asyncio.create_task(ble_client.connect())
 
     app = web.Application()
     app.add_routes(routes)
