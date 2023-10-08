@@ -1,5 +1,5 @@
 import asyncio
-import adafruit_logging as logging
+import logging
 from adafruit_ble import BLERadio
 from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
 from adafruit_ble.services.nordic import UARTService
@@ -9,14 +9,12 @@ from command import CommandType, Command, int_to_ascii_byte, parse_command
 
 
 class BLEClient:
-
     def __init__(self):
-        self.ble = BLERadio()
-        self.uart = UARTService()
-        self.advertisement = ProvideServicesAdvertisement(self.uart)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.setLevel(logging.DEBUG)
         self.logger.addHandler(MyHandler(self.__class__.__name__))
+        self.ble = BLERadio()
+        self.uart = None
         self.healthcheck_task = None
         self.healthcheck_num_failed = 0
         self.pending_commands = {}
@@ -24,12 +22,15 @@ class BLEClient:
 
     async def connect(self):
         if not self.ble.connected:
-            self.logger.info("starting advertising")
-            self.ble.start_advertising(self.advertisement)
-            while not self.ble.connected:
-                await asyncio.sleep(0)
-            self.logger.info("connected")
-            self.ble.stop_advertising()
+            self.logger.info("starting scanning")
+            for advertisement in self.ble.start_scan(ProvideServicesAdvertisement):
+                if UARTService not in advertisement.services:
+                    continue
+                connection = self.ble.connect(advertisement)
+                self.uart = connection[UARTService]
+                self.logger.info("connected")
+                break
+            self.ble.stop_scan()
             asyncio.create_task(self._read())
             self.healthcheck_task = asyncio.create_task(self._healthcheck())
 
@@ -58,11 +59,14 @@ class BLEClient:
                         callback(command, data)
                     else:
                         self.logger.error(
-                            "no callback for id: " + id + " " + str(self.pending_commands))
+                            "no callback for id: "
+                            + id
+                            + " "
+                            + str(self.pending_commands)
+                        )
                 else:
                     if command == Command.HEALTHCHECK:
-                        asyncio.create_task(
-                            self.send_command_response(id, command))
+                        asyncio.create_task(self.send_command_response(id, command))
                     # TODO: handle other commands
 
         self.logger.info("no longer connected, reconnecting")
@@ -71,8 +75,8 @@ class BLEClient:
     async def _read_line(self):
         if self.uart.in_waiting > 0:
             l = self.uart.readline()
-            if l != b'':
-                l = l.decode("utf-8").strip('\n')
+            if l != b"":
+                l = l.decode("utf-8").strip("\n")
                 return l
         return None
 
@@ -80,11 +84,7 @@ class BLEClient:
         if self.ble.connected:
             packet_id = int_to_ascii_byte(self.packet_id)
             id = "{}{}".format(CommandType.REQUEST, packet_id)
-            packet = "{}|{}|{}".format(
-                id,
-                int_to_ascii_byte(command),
-                "#".join(data)
-            )
+            packet = "{}|{}|{}".format(id, int_to_ascii_byte(command), "#".join(data))
             self.pending_commands[packet_id] = response_handler
             self.packet_id = self.packet_id + 1
             self.write(packet)
@@ -92,9 +92,7 @@ class BLEClient:
     async def send_command_response(self, id, command, *data):
         if self.ble.connected:
             packet = "{}|{}|{}".format(
-                CommandType.RESPONSE + id,
-                int_to_ascii_byte(command),
-                "#".join(data)
+                CommandType.RESPONSE + id, int_to_ascii_byte(command), "#".join(data)
             )
             self.write(packet)
 
@@ -102,15 +100,17 @@ class BLEClient:
         self.healthcheck_num_failed = 0
 
     async def _healthcheck(self):
-         # Let the connection settle for a few seconds
+        # Let the connection settle for a few seconds
         await asyncio.sleep(3)
 
         while True:
             # Pessimistically set failed to have healthcheck responder reset to 0 on success
             self.healthcheck_num_failed += 1
             await asyncio.create_task(
-                self.send_command_request(Command.HEALTHCHECK,
-                                          response_handler=self.on_healthcheck_response))
+                self.send_command_request(
+                    Command.HEALTHCHECK, response_handler=self.on_healthcheck_response
+                )
+            )
             if self.healthcheck_num_failed > 2:
                 self.logger.error("failed healthcheck")
                 asyncio.create_task(self._reset())

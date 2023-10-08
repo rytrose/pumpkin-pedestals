@@ -1,5 +1,7 @@
-from aiohttp import web
 import asyncio
+from aiohttp import web
+
+from central import BLEClient
 
 routes = web.RouteTableDef()
 
@@ -22,6 +24,9 @@ async def websocket_handler(request):
 
 
 def main():
+    ble_client = BLEClient()
+    asyncio.create_task(ble_client.connect())
+
     app = web.Application()
     app.add_routes(routes)
     app.add_routes([web.get("/websocket", websocket_handler)])
