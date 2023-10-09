@@ -26,6 +26,7 @@ class BLEClient:
             for advertisement in self.ble.start_scan(ProvideServicesAdvertisement):
                 if UARTService not in advertisement.services:
                     continue
+                self.logger.info("found UART service, connecting")
                 connection = self.ble.connect(advertisement)
                 self.uart = connection[UARTService]
                 self.logger.info("connected")
@@ -37,7 +38,7 @@ class BLEClient:
     def write(self, data):
         self.logger.debug("TX: %s", data)
         if self.ble.connected:
-            self.uart.write(data + "\n")
+            self.uart.write((data + "\n").encode("utf-8"))
 
     async def _reset(self):
         for conn in self.ble.connections:
