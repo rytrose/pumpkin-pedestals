@@ -1,5 +1,5 @@
 import asyncio
-import logging
+import adafruit_logging as logging
 from adafruit_ble import BLERadio
 from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
 from adafruit_ble.services.nordic import UARTService
@@ -7,9 +7,12 @@ from adafruit_ble.services.nordic import UARTService
 from log import MyHandler
 from command import CommandType, Command, int_to_ascii_byte, parse_command
 
+from concurrent.futures import ThreadPoolExecutor
+
 
 class BLEClient:
     def __init__(self):
+        self.executor = ThreadPoolExecutor(1)
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.setLevel(logging.DEBUG)
         self.logger.addHandler(MyHandler(self.__class__.__name__))
@@ -23,14 +26,22 @@ class BLEClient:
     async def connect(self):
         if not self.ble.connected:
             self.logger.info("starting scanning")
-            for advertisement in self.ble.start_scan(ProvideServicesAdvertisement):
-                if UARTService not in advertisement.services:
-                    continue
-                self.logger.info("found UART service, connecting")
-                connection = self.ble.connect(advertisement)
-                self.uart = connection[UARTService]
-                self.logger.info("connected")
-                break
+
+            def scan():
+                for advertisement in self.ble.start_scan(
+                    ProvideServicesAdvertisement, timeout=5
+                ):
+                    if UARTService not in advertisement.services:
+                        continue
+                    self.logger.info("found UART service, connecting")
+                    connection = self.ble.connect(advertisement)
+                    self.uart = connection[UARTService]
+                    self.logger.info("connected")
+                    break
+
+            # Allow the coroutine to yield by scanning in a new thread
+            await asyncio.get_running_loop().run_in_executor(self.executor, scan)
+
             self.ble.stop_scan()
             asyncio.create_task(self._read())
             self.healthcheck_task = asyncio.create_task(self._healthcheck())

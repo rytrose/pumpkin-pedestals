@@ -1,9 +1,4 @@
-import platform
-
-if platform.system() == "Darwin":
-    import logging
-else:
-    import adafruit_logging as logging
+import adafruit_logging as logging
 
 from datetime import datetime
 
@@ -18,4 +13,4 @@ class MyHandler(logging.StreamHandler):
 
         :param record: The record (message object) to be logged
         """
-        return f"{datetime.utcnow().strftime('%a %d %b %Y %H:%M:%S.%f')[:-3]} +00:00: [{record.levelname}] [{self.name}]: {record.msg % record.args}"
+        return f"{datetime.utcnow().strftime('%a %d %b %Y %H:%M:%S.%f')[:-3]} +00:00: [{record.levelname}] [{self.name}]: {record.msg}"

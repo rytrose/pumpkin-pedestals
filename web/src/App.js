@@ -5,7 +5,7 @@ function App() {
   const [messageHistory, setMessageHistory] = useState([]);
 
   const { sendJsonMessage, lastMessage, readyState } = useWebSocket(
-    "ws://127.0.0.1:5000/websocket"
+    `ws://${window.location.hostname}:${window.location.port}/websocket`
   );
 
   useEffect(() => {

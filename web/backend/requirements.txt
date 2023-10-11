@@ -1,3 +1,4 @@
 aiohttp
 aiohttp-devtools
 adafruit-circuitpython-ble
+adafruit-circuitpython-logging
