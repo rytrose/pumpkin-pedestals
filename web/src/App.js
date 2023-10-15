@@ -1,47 +1,33 @@
-import React, { useState, useCallback, useEffect } from "react";
-import useWebSocket, { ReadyState } from "react-use-websocket";
+import { useEffect } from "react";
+import Carousel from "./components/Carousel";
+
+import { useWebSocketAPI, WebSocketAPIMethod } from "./hooks/useWebSocketAPI";
 
 function App() {
-  const [messageHistory, setMessageHistory] = useState([]);
-
-  const { sendJsonMessage, lastMessage, readyState } = useWebSocket(
-    `ws://${window.location.hostname}:${window.location.port}/websocket`
+  const [sendHealthcheck, lastHealthcheck] = useWebSocketAPI(
+    WebSocketAPIMethod.HEALTHCHECK
   );
 
   useEffect(() => {
-    if (lastMessage !== null) {
-      setMessageHistory((prev) => prev.concat(lastMessage));
+    sendHealthcheck();
+  }, [sendHealthcheck]);
+
+  useEffect(() => {
+    if (lastHealthcheck) {
+      console.log("received healthcheck", lastHealthcheck);
     }
-  }, [lastMessage, setMessageHistory]);
+  }, [lastHealthcheck]);
 
-  const handleClickSendMessage = useCallback(
-    () => sendJsonMessage(["ping!"]),
-    [sendJsonMessage]
-  );
-
-  const connectionStatus = {
-    [ReadyState.CONNECTING]: "Connecting",
-    [ReadyState.OPEN]: "Open",
-    [ReadyState.CLOSING]: "Closing",
-    [ReadyState.CLOSED]: "Closed",
-    [ReadyState.UNINSTANTIATED]: "Uninstantiated",
-  }[readyState];
-
+  const items = [
+    <div className="border-[1px] border-red-100 rounded-xl">Hello</div>,
+    <div>World</div>,
+  ];
   return (
-    <div>
-      <button
-        onClick={handleClickSendMessage}
-        disabled={readyState !== ReadyState.OPEN}
-      >
-        Click Me to send 'Hello'
-      </button>
-      <span>The WebSocket is currently {connectionStatus}</span>
-      {lastMessage ? <span>Last message: {lastMessage.data}</span> : null}
-      <ul>
-        {messageHistory.map((message, idx) => (
-          <span key={idx}>{message ? message.data : null}</span>
-        ))}
-      </ul>
+    <div className="flex flex-col items-center my-8 mx-8 sm:mx-24">
+      <Carousel
+        className={"border-[1px] border-black rounded-xl"}
+        items={items}
+      />
     </div>
   );
 }

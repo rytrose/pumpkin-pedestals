@@ -27,8 +27,11 @@ async def websocket_handler(request):
 
     async for message in socket:
         data = message.json()
-        logger.info("ws RX: %s", data)
-        await socket.send_json(["pong"])
+        logger.debug("ws RX: %s", data)
+        method = data.get("method")
+        if method:
+            if method == "healthcheck":
+                await socket.send_json({"method": "healthcheck", "data": {}})
 
     return socket
 
