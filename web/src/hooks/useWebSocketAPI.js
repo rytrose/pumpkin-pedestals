@@ -4,15 +4,21 @@ import useWebSocket from "react-use-websocket";
 export const useWebSocketAPI = (method) => {
   const { sendJsonMessage, lastJsonMessage, readyState } = useWebSocket(
     `ws://${window.location.hostname}:${window.location.port}/websocket`,
-    { share: true }
+    {
+      shouldReconnect: (closeEvent) => true,
+      reconnectAttempts: Infinity,
+      share: true,
+    }
   );
 
   const send = useCallback(
     (data = {}) => {
-      sendJsonMessage({
-        method: method,
-        data: data,
-      });
+      if (method) {
+        sendJsonMessage({
+          method: method,
+          data: data,
+        });
+      }
     },
     [sendJsonMessage, method]
   );
@@ -20,12 +26,16 @@ export const useWebSocketAPI = (method) => {
   const [lastReceived, setLastReceived] = useState(null);
 
   useEffect(() => {
-    if (!!lastJsonMessage?.data) {
+    if (
+      method &&
+      method === lastJsonMessage?.method &&
+      !!lastJsonMessage?.data
+    ) {
       setLastReceived(lastJsonMessage.data);
     }
   }, [method, lastJsonMessage]);
 
-  return [send, lastReceived, readyState];
+  return { send, lastReceived, readyState };
 };
 
 export const WebSocketAPIMethod = {

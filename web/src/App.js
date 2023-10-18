@@ -1,33 +1,52 @@
-import { useEffect } from "react";
-import Carousel from "./components/Carousel";
+import { library } from "@fortawesome/fontawesome-svg-core";
+import {
+  faChevronLeft,
+  faChevronRight,
+} from "@fortawesome/free-solid-svg-icons";
 
-import { useWebSocketAPI, WebSocketAPIMethod } from "./hooks/useWebSocketAPI";
+import Carousel from "./components/Carousel";
+import PedestalCard from "./components/PedestalCard";
+import Status, { StatusEnum } from "./components/Status";
+import { useEffect, useState } from "react";
+import { useWebSocketAPI } from "./hooks/useWebSocketAPI";
+import { ReadyState } from "react-use-websocket";
+
+library.add(faChevronLeft, faChevronRight);
 
 function App() {
-  const [sendHealthcheck, lastHealthcheck] = useWebSocketAPI(
-    WebSocketAPIMethod.HEALTHCHECK
-  );
+  const [statusEnum, setStatusEnum] = useState(StatusEnum.IDLE);
+  // Specifically using useWebSocketAPI without a method as to only track
+  // the state of the connection
+  const { readyState } = useWebSocketAPI();
 
   useEffect(() => {
-    sendHealthcheck();
-  }, [sendHealthcheck]);
-
-  useEffect(() => {
-    if (lastHealthcheck) {
-      console.log("received healthcheck", lastHealthcheck);
+    if (readyState === ReadyState.CONNECTING) {
+      setStatusEnum(StatusEnum.CONNECTING);
+    } else if (readyState === ReadyState.OPEN) {
+      setStatusEnum(StatusEnum.IDLE);
+    } else if (
+      readyState === ReadyState.CLOSING ||
+      readyState === ReadyState.CLOSED
+    ) {
+      setStatusEnum(StatusEnum.DISCONNECTED);
     }
-  }, [lastHealthcheck]);
+  }, [readyState, setStatusEnum]);
 
   const items = [
-    <div className="border-[1px] border-red-100 rounded-xl">Hello</div>,
-    <div>World</div>,
+    <PedestalCard>Hello</PedestalCard>,
+    <PedestalCard>World</PedestalCard>,
   ];
   return (
-    <div className="flex flex-col items-center my-8 mx-8 sm:mx-24">
-      <Carousel
-        className={"border-[1px] border-black rounded-xl"}
-        items={items}
-      />
+    <div className="flex flex-col h-screen gap-2 py-8 px-8 sm:px-24">
+      <div className="flex flex-row-reverse">
+        <Status statusEnum={statusEnum} />
+      </div>
+      <div className="grow w-full">
+        <Carousel
+          className={"border-[1px] border-black rounded-xl"}
+          items={items}
+        />
+      </div>
     </div>
   );
 }
