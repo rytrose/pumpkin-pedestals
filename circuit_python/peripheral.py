@@ -9,7 +9,6 @@ from command import CommandType, Command, int_to_ascii_byte, parse_command
 
 
 class BLEClient:
-
     def __init__(self):
         self.ble = BLERadio()
         self.uart = UARTService()
@@ -58,12 +57,22 @@ class BLEClient:
                         callback(command, data)
                     else:
                         self.logger.error(
-                            "no callback for id: " + id + " " + str(self.pending_commands))
+                            "no callback for id: "
+                            + id
+                            + " "
+                            + str(self.pending_commands)
+                        )
                 else:
                     if command == Command.HEALTHCHECK:
+                        asyncio.create_task(self.send_command_response(id, command))
+                    # TODO: handle other requests
+                    if command == Command.GET_PEDESTALS:
+                        # TODO: query pedestals
                         asyncio.create_task(
-                            self.send_command_response(id, command))
-                    # TODO: handle other commands
+                            self.send_command_response(
+                                id, command, "72FFE600", "734959E6", "748C1424"
+                            )
+                        )
 
         self.logger.info("no longer connected, reconnecting")
         asyncio.create_task(self._reset())
@@ -71,8 +80,8 @@ class BLEClient:
     async def _read_line(self):
         if self.uart.in_waiting > 0:
             l = self.uart.readline()
-            if l != b'':
-                l = l.decode("utf-8").strip('\n')
+            if l != b"":
+                l = l.decode("utf-8").strip("\n")
                 return l
         return None
 
@@ -80,11 +89,7 @@ class BLEClient:
         if self.ble.connected:
             packet_id = int_to_ascii_byte(self.packet_id)
             id = "{}{}".format(CommandType.REQUEST, packet_id)
-            packet = "{}|{}|{}".format(
-                id,
-                int_to_ascii_byte(command),
-                "#".join(data)
-            )
+            packet = "{}|{}|{}".format(id, int_to_ascii_byte(command), "#".join(data))
             self.pending_commands[packet_id] = response_handler
             self.packet_id = self.packet_id + 1
             self.write(packet)
@@ -92,9 +97,7 @@ class BLEClient:
     async def send_command_response(self, id, command, *data):
         if self.ble.connected:
             packet = "{}|{}|{}".format(
-                CommandType.RESPONSE + id,
-                int_to_ascii_byte(command),
-                "#".join(data)
+                CommandType.RESPONSE + id, int_to_ascii_byte(command), "#".join(data)
             )
             self.write(packet)
 
@@ -102,15 +105,17 @@ class BLEClient:
         self.healthcheck_num_failed = 0
 
     async def _healthcheck(self):
-         # Let the connection settle for a few seconds
+        # Let the connection settle for a few seconds
         await asyncio.sleep(3)
 
         while True:
             # Pessimistically set failed to have healthcheck responder reset to 0 on success
             self.healthcheck_num_failed += 1
             await asyncio.create_task(
-                self.send_command_request(Command.HEALTHCHECK,
-                                          response_handler=self.on_healthcheck_response))
+                self.send_command_request(
+                    Command.HEALTHCHECK, response_handler=self.on_healthcheck_response
+                )
+            )
             if self.healthcheck_num_failed > 2:
                 self.logger.error("failed healthcheck")
                 asyncio.create_task(self._reset())

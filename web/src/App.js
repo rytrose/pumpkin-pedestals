@@ -10,6 +10,7 @@ import Status, { StatusEnum } from "./components/Status";
 import { useEffect, useState } from "react";
 import { useWebSocketAPI } from "./hooks/useWebSocketAPI";
 import { ReadyState } from "react-use-websocket";
+import PedestalBrowser from "./components/PedestalBrowser";
 
 library.add(faChevronLeft, faChevronRight);
 
@@ -41,12 +42,7 @@ function App() {
       <div className="flex flex-row-reverse">
         <Status statusEnum={statusEnum} />
       </div>
-      <div className="grow w-full">
-        <Carousel
-          className={"border-[1px] border-black rounded-xl"}
-          items={items}
-        />
-      </div>
+      <PedestalBrowser />
     </div>
   );
 }

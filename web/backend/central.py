@@ -79,7 +79,7 @@ class BLEClient:
                 else:
                     if command == Command.HEALTHCHECK:
                         asyncio.create_task(self.send_command_response(id, command))
-                    # TODO: handle other commands
+                    # TODO: handle other requests
 
         self.logger.info("no longer connected, reconnecting")
         asyncio.create_task(self._reset())

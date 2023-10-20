@@ -1,8 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import useWebSocket from "react-use-websocket";
+import usePrevious from "./usePrevious";
 
 export const useWebSocketAPI = (method) => {
-  const { sendJsonMessage, lastJsonMessage, readyState } = useWebSocket(
+  const {
+    sendJsonMessage,
+    lastJsonMessage: latestJsonMessage,
+    readyState,
+  } = useWebSocket(
     `ws://${window.location.hostname}:${window.location.port}/websocket`,
     {
       shouldReconnect: (closeEvent) => true,
@@ -10,6 +15,7 @@ export const useWebSocketAPI = (method) => {
       share: true,
     }
   );
+  const previousJsonMessage = usePrevious(latestJsonMessage);
 
   const send = useCallback(
     (data = {}) => {
@@ -28,12 +34,14 @@ export const useWebSocketAPI = (method) => {
   useEffect(() => {
     if (
       method &&
-      method === lastJsonMessage?.method &&
-      !!lastJsonMessage?.data
+      method === latestJsonMessage?.method &&
+      !!latestJsonMessage?.data &&
+      JSON.stringify(latestJsonMessage) !== JSON.stringify(previousJsonMessage)
     ) {
-      setLastReceived(lastJsonMessage.data);
+      setLastReceived(latestJsonMessage.data);
     }
-  }, [method, lastJsonMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [method, latestJsonMessage]);
 
   return { send, lastReceived, readyState };
 };
