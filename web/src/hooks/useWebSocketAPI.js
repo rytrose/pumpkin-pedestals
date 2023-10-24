@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import useWebSocket from "react-use-websocket";
 import usePrevious from "./usePrevious";
 

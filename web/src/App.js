@@ -4,8 +4,6 @@ import {
   faChevronRight,
 } from "@fortawesome/free-solid-svg-icons";
 
-import Carousel from "./components/Carousel";
-import PedestalCard from "./components/PedestalCard";
 import Status, { StatusEnum } from "./components/Status";
 import { useEffect, useState } from "react";
 import { useWebSocketAPI } from "./hooks/useWebSocketAPI";
@@ -33,10 +31,6 @@ function App() {
     }
   }, [readyState, setStatusEnum]);
 
-  const items = [
-    <PedestalCard>Hello</PedestalCard>,
-    <PedestalCard>World</PedestalCard>,
-  ];
   return (
     <div className="flex flex-col h-screen gap-2 py-8 px-8 sm:px-24">
       <div className="flex flex-row-reverse">
