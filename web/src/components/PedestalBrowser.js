@@ -21,6 +21,7 @@ const PedestalBrowser = () => {
   );
 
   const [pickerColor, setPickerColor] = useState();
+  const [currentPedestalColor, setCurrentPedestalColor] = useState();
 
   const onPickerColorChange = (color) => {
     setPickerColor(color);
@@ -37,6 +38,7 @@ const PedestalBrowser = () => {
         b: parseInt(pedestal.color.substring(4, 6), 16),
       };
       setPickerColor(rgbColor);
+      setCurrentPedestalColor(`#${pedestal.color}`);
     },
     [pedestalData]
   );
@@ -67,6 +69,15 @@ const PedestalBrowser = () => {
             </div>
             <div className="flex flex-col gap-4 lg:flex-row lg:justify-center lg:gap-8">
               <div className="w-3/4 m-auto lg:w-1/2 lg:m-0 [&>div]:w-auto">
+                <div className="">
+                  <div
+                    className="rounded-xl p-2"
+                    style={{ backgroundColor: currentPedestalColor }}
+                  ></div>
+                  <p className="pb-1 text-xs text-center">
+                    Current pedestal color
+                  </p>
+                </div>
                 <RgbColorPicker
                   color={pickerColor}
                   onChange={onPickerColorChange}

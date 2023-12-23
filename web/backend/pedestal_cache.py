@@ -21,7 +21,7 @@ class PedestalCache:
         """Gets pedestals, with or without refreshing the cache by reaching out to the hub."""
         if self.mock:
             return [
-                {"address": "00", "color": "ab1234"},
+                {"address": "00", "color": "eb2e34"},
                 {"address": "01", "color": "a2bdf1"},
             ]
         if refresh_cache:
