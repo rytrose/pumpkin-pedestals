@@ -81,7 +81,7 @@ class BLEClient:
                         asyncio.create_task(self.send_command_response(id, command))
                     # TODO: handle other requests
 
-        self.logger.info("no longer connected, reconnecting")
+        self.logger.info("not connected, reconnecting")
         asyncio.create_task(self._reset())
 
     async def _read_line(self):
