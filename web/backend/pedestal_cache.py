@@ -7,7 +7,8 @@ from command import Command
 
 
 class PedestalCache:
-    def __init__(self):
+    def __init__(self, mock=False):
+        self.mock = mock
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.setLevel(logging.DEBUG)
         self.logger.addHandler(MyHandler(self.__class__.__name__))
@@ -18,6 +19,11 @@ class PedestalCache:
 
     async def get_pedestals(self, refresh_cache=False):
         """Gets pedestals, with or without refreshing the cache by reaching out to the hub."""
+        if self.mock:
+            return [
+                {"address": "00", "color": "ab1234"},
+                {"address": "01", "color": "a2bdf1"},
+            ]
         if refresh_cache:
             await asyncio.create_task(
                 self.ble_client.send_command_request(

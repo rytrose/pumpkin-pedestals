@@ -11,7 +11,7 @@ const PedestalCard = ({ address, color, blinking }) => {
           blinking ? "pulse-animation" : ""
         }`}
         style={{
-          filter: `drop-shadow(0 0 15px #${color})`,
+          filter: `drop-shadow(0 0 8px #${color})`,
         }}
       >
         <path
