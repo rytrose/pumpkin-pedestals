@@ -1,34 +1,47 @@
 import { WebSocketAPIMethod, useWebSocketAPI } from "../hooks/useWebSocketAPI";
 import PedestalCard from "./PedestalCard";
 import Carousel from "./Carousel";
+import { rgbToHex } from "../utils/color";
 import { Button, Spinner } from "@material-tailwind/react";
 import { RgbColorPicker } from "react-colorful";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const PedestalBrowser = () => {
   // Connected websocket connections will receive async pedestal state updates at
   // a regular interval
-  const { lastReceived: pedestalData } = useWebSocketAPI(
+  const { lastReceived: getPedestalData } = useWebSocketAPI(
     WebSocketAPIMethod.GET_PEDESTALS
   );
 
-  const { sendJsonMessage: setPedestalsColor } = useWebSocketAPI(
-    WebSocketAPIMethod.SET_PEDESTALS_COLOR
-  );
+  const { send: setPedestalsColor, lastReceived: pedestalDataAfterSet } =
+    useWebSocketAPI(WebSocketAPIMethod.SET_PEDESTALS_COLOR);
 
-  const { sendJsonMessage: blinkPedestal } = useWebSocketAPI(
+  const { send: blinkPedestal } = useWebSocketAPI(
     WebSocketAPIMethod.BLINK_PEDESTAL
   );
 
-  const [pickerColor, setPickerColor] = useState();
-  const [currentPedestalColor, setCurrentPedestalColor] = useState();
+  // Keep the pedestal data as state that can be set by either the backend
+  // updates or in response to setting pedestals color
+  const [pedestalData, setPedestalData] = useState();
 
+  // Update pedestal state whenever it's provided by the backend
+  useEffect(() => {
+    setPedestalData(getPedestalData);
+  }, [getPedestalData]);
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [pickerColor, setPickerColor] = useState();
+  const [newPedestalColor, setNewPedestalColor] = useState();
+
+  // When the picker color is changed update the new pedestal color indicator
+  // and the color picker handle
   const onPickerColorChange = (color) => {
+    setNewPedestalColor(color);
     setPickerColor(color);
   };
 
-  // Whenever a new pedestal is shown, move the color picker
-  // to its color
+  // Whenever a new pedestal is shown move the color picker
+  // to its color and set the new pedestal color indicator
   const onCarouselChange = useCallback(
     (index) => {
       const pedestal = pedestalData[index];
@@ -38,10 +51,34 @@ const PedestalBrowser = () => {
         b: parseInt(pedestal.color.substring(4, 6), 16),
       };
       setPickerColor(rgbColor);
-      setCurrentPedestalColor(`#${pedestal.color}`);
+      setNewPedestalColor(rgbColor);
+      setCurrentIndex(index);
     },
     [pedestalData]
   );
+
+  const [setColorLoading, setSetColorLoading] = useState(false);
+
+  // When "Set Color" is clicked, attempt to set the pedestal to the new color
+  const onSetColor = () => {
+    setSetColorLoading(true);
+    setPedestalsColor([
+      {
+        address: pedestalData[currentIndex].address,
+        color: rgbToHex(
+          newPedestalColor.r,
+          newPedestalColor.g,
+          newPedestalColor.b
+        ),
+      },
+    ]);
+  };
+
+  // Update the state when set pedestals color returns
+  useEffect(() => {
+    setSetColorLoading(false);
+    setPedestalData(pedestalDataAfterSet);
+  }, [pedestalDataAfterSet]);
 
   // Transform pedestal data into cards
   const items = pedestalData?.map((data) => {
@@ -69,14 +106,16 @@ const PedestalBrowser = () => {
             </div>
             <div className="flex flex-col gap-4 lg:flex-row lg:justify-center lg:gap-8">
               <div className="w-3/4 m-auto lg:w-1/2 lg:m-0 [&>div]:w-auto">
-                <div className="">
+                <div>
                   <div
                     className="rounded-xl p-2"
-                    style={{ backgroundColor: currentPedestalColor }}
+                    style={{
+                      backgroundColor: newPedestalColor
+                        ? `rgb(${newPedestalColor.r},${newPedestalColor.g},${newPedestalColor.b})`
+                        : "",
+                    }}
                   ></div>
-                  <p className="pb-1 text-xs text-center">
-                    Current pedestal color
-                  </p>
+                  <p className="pb-1 text-xs text-center">New pedestal color</p>
                 </div>
                 <RgbColorPicker
                   color={pickerColor}
@@ -84,7 +123,9 @@ const PedestalBrowser = () => {
                 />
               </div>
               <div className="flex gap-2 justify-center lg:flex-col lg:gap-4">
-                <Button>Set Color</Button>
+                <Button onClick={onSetColor} loading={setColorLoading}>
+                  Set Color
+                </Button>
                 <Button>Blink Pedestal</Button>
               </div>
             </div>

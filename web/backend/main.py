@@ -48,8 +48,11 @@ async def websocket_handler(request):
         method = data.get("method")
         if method:
             if method == "healthcheck":
-                await socket.send_json({"method": "healthcheck", "data": {}})
-
+                await socket.send_json({"method": method, "data": {}})
+            if method == "setPedestalsColor":
+                method_data = data.get("data", [])
+                new_pedestals = await pedestal_cache.set_pedestals_color(method_data)
+                await socket.send_json({"method": method, "data": new_pedestals})
     # Clean up the updating task
     update_task.cancel()
 

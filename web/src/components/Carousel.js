@@ -18,8 +18,8 @@ const Carousel = ({ className, items, onChange }) => {
   });
 
   useEffect(() => {
-    onChange(0);
-  }, [onChange]);
+    onChange(index);
+  }, [onChange, index]);
 
   const onIndexChange = useCallback(
     (delta, handleFunc) => {
