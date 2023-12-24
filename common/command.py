@@ -7,7 +7,8 @@ class Command:
     HEALTHCHECK = 0
     GET_PEDESTALS = 1
     SET_PEDESTALS_COLOR = 2
-    BLINK_PEDESTAL = 3
+    BLINK_PEDESTALS = 3
+    STOP_PEDESTALS_BLINKING = 4
 
 
 def int_to_ascii_byte(i):

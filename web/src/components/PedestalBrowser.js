@@ -13,12 +13,16 @@ const PedestalBrowser = () => {
     WebSocketAPIMethod.GET_PEDESTALS
   );
 
-  const { send: setPedestalsColor, lastReceived: pedestalDataAfterSet } =
+  const { send: setPedestalsColor, lastReceived: pedestalDataAfterSetColor } =
     useWebSocketAPI(WebSocketAPIMethod.SET_PEDESTALS_COLOR);
 
-  const { send: blinkPedestal } = useWebSocketAPI(
-    WebSocketAPIMethod.BLINK_PEDESTAL
-  );
+  const { send: blinkPedestals, lastReceived: pedestalDataAfterBlink } =
+    useWebSocketAPI(WebSocketAPIMethod.BLINK_PEDESTALS);
+
+  const {
+    send: stopPedestalsBlinking,
+    lastReceived: pedestalDataAfterStopBlinking,
+  } = useWebSocketAPI(WebSocketAPIMethod.STOP_PEDESTALS_BLINKING);
 
   // Keep the pedestal data as state that can be set by either the backend
   // updates or in response to setting pedestals color
@@ -77,8 +81,33 @@ const PedestalBrowser = () => {
   // Update the state when set pedestals color returns
   useEffect(() => {
     setSetColorLoading(false);
-    setPedestalData(pedestalDataAfterSet);
-  }, [pedestalDataAfterSet]);
+    setPedestalData(pedestalDataAfterSetColor);
+  }, [pedestalDataAfterSetColor]);
+
+  const [blinkPedestalLoading, setBlinkPedestalLoading] = useState(false);
+
+  // When button is clicked, attempt to toggle the pedestal blinking
+  const onBlinkPedestal = () => {
+    setBlinkPedestalLoading(true);
+    const pedestal = pedestalData[currentIndex];
+    if (pedestal.blinking) {
+      stopPedestalsBlinking([pedestal.address]);
+    } else {
+      blinkPedestals([pedestal.address]);
+    }
+  };
+
+  // Update the state when blink pedestals returns
+  useEffect(() => {
+    setBlinkPedestalLoading(false);
+    setPedestalData(pedestalDataAfterBlink);
+  }, [pedestalDataAfterBlink]);
+
+  // Update the state when stop pedestals blinking returns
+  useEffect(() => {
+    setBlinkPedestalLoading(false);
+    setPedestalData(pedestalDataAfterStopBlinking);
+  }, [pedestalDataAfterStopBlinking]);
 
   // Transform pedestal data into cards
   const items = pedestalData?.map((data) => {
@@ -126,7 +155,14 @@ const PedestalBrowser = () => {
                 <Button onClick={onSetColor} loading={setColorLoading}>
                   Set Color
                 </Button>
-                <Button>Blink Pedestal</Button>
+                <Button
+                  onClick={onBlinkPedestal}
+                  loading={blinkPedestalLoading}
+                >
+                  {pedestalData[currentIndex].blinking
+                    ? "Stop Pedestal Blinking"
+                    : "Blink Pedestal"}
+                </Button>
               </div>
             </div>
           </div>

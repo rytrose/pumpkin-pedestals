@@ -73,24 +73,25 @@ Retrieves the currently connected pedestal addresses and their current LED color
   - Data: None
 - Response
   - Data:
-    - An array of all currently connected pedestal addresse and color combinations, where each index is 8 ASCII characters representing 4 bytes in hex:
+    - An array of all currently connected pedestal addresses, color combinations, and blinking state. The first 8 characters are ASCII character pairs representing 4 bytes in hex, followed by the blinking state `0` or `1`:
       - Byte 1 (MSB): The I2C address of the pedestal
       - Byte 2: The red value of the pedestal LED
       - Byte 3: The green value the pedestal LED
       - Byte 4: The blue value the pedestal LED
+      - Character 9: `0` if the pedestal is solid and `1` if blinking
 
 Example:
 - Request
   - `000|01|`
 - Response
-  - `100|01|72FFE600#734959E6#748C1424`
-    - I2C address `0x72`, hex color #FFE600 (yellow)
-    - I2C address `0x73`, hex color #4959E6 (blue)
-    - I2C address `0x74`, hex color #8C1424 (red)
+  - `100|01|72FFE6000#734959E60#748C14241`
+    - I2C address `0x72`, hex color #FFE600 (yellow), not blinking (`0`)
+    - I2C address `0x73`, hex color #4959E6 (blue), not blinking (`0`)
+    - I2C address `0x74`, hex color #8C1424 (red), blinking (`1`)
   
 ### Set Pedestals Color
 
-Sets the LED color of the provided pedestals. If blinking, setting a pedestal's LED color with this command will stop blinking.
+Sets the LED color of the provided pedestals. Returns all currently connected pedestals.
 
 - Command: `02`
 - Request
@@ -102,7 +103,12 @@ Sets the LED color of the provided pedestals. If blinking, setting a pedestal's 
       - Byte 4: The desired blue value the LED
 - Response
   - Data:
-    - An array of updated pedestal I2C addresses
+    - An array of all currently connected pedestal addresses, color combinations, and blinking state. The first 8 characters are ASCII character pairs representing 4 bytes in hex, followed by the blinking state `0` or `1`:
+      - Byte 1 (MSB): The I2C address of the pedestal
+      - Byte 2: The red value of the pedestal LED
+      - Byte 3: The green value the pedestal LED
+      - Byte 4: The blue value the pedestal LED
+      - Character 9: `0` if the pedestal is solid and `1` if blinking
 
 Example:
 - Request
@@ -110,11 +116,12 @@ Example:
     - I2C address `0x72`, hex color #FFE600 (yellow)
     - I2C address `0x73`, hex color #4959E6 (blue)
 - Response
-  - `100|02|72#73`
-    - I2C address `0x72`
-    - I2C address `0x73`
+  - `100|02|72FFE6000#734959E60#748C14241`
+    - I2C address `0x72`, hex color #FFE600 (yellow), not blinking (`0`)
+    - I2C address `0x73`, hex color #4959E6 (blue), not blinking (`0`)
+    - I2C address `0x74`, hex color #8C1424 (red), blinking (`1`)
 
-### Blink Pedestal
+### Blink Pedestals
 
 Starts blinking the LED of the pedestals at the provided addresses.
 
@@ -124,16 +131,48 @@ Starts blinking the LED of the pedestals at the provided addresses.
     - A list of 1 byte pedestal I2C address in hex
 - Response
   - Data:
-    - An array of pedestal I2C addresses set to blinking
+    - An array of all currently connected pedestal addresses, color combinations, and blinking state. The first 8 characters are ASCII character pairs representing 4 bytes in hex, followed by the blinking state `0` or `1`:
+      - Byte 1 (MSB): The I2C address of the pedestal
+      - Byte 2: The red value of the pedestal LED
+      - Byte 3: The green value the pedestal LED
+      - Byte 4: The blue value the pedestal LED
+      - Character 9: `0` if the pedestal is solid and `1` if blinking
 
 Example:
 - Request
   - `000|03|72#73`
     - I2C address `0x72`
     - I2C address `0x73`
-- Response (success)
-  - `100|03|72#73`
+- Response
+  - `100|03|72FFE6001#734959E61#748C14241`
+    - I2C address `0x72`, hex color #FFE600 (yellow), blinking (`1`)
+    - I2C address `0x73`, hex color #4959E6 (blue), blinking (`1`)
+    - I2C address `0x74`, hex color #8C1424 (red), blinking (`1`)
+
+### Stop Pedestals Blinking
+
+Stops blinking the LED of the pedestals at the provided addresses. If the pedestal is not blinking, then no operation is performed.
+
+- Command: `04`
+- Request
+  - Data:
+    - A list of 1 byte pedestal I2C address in hex
+- Response
+  - Data:
+    - An array of all currently connected pedestal addresses, color combinations, and blinking state. The first 8 characters are ASCII character pairs representing 4 bytes in hex, followed by the blinking state `0` or `1`:
+      - Byte 1 (MSB): The I2C address of the pedestal
+      - Byte 2: The red value of the pedestal LED
+      - Byte 3: The green value the pedestal LED
+      - Byte 4: The blue value the pedestal LED
+      - Character 9: `0` if the pedestal is solid and `1` if blinking
+
+Example:
+- Request
+  - `000|04|72#73`
     - I2C address `0x72`
     - I2C address `0x73`
-- Response (failure)
-  - `100|03|`
+- Response
+  - `100|03|72FFE6000#734959E60#748C14241`
+    - I2C address `0x72`, hex color #FFE600 (yellow), not blinking (`0`)
+    - I2C address `0x73`, hex color #4959E6 (blue), not blinking (`0`)
+    - I2C address `0x74`, hex color #8C1424 (red), blinking (`1`)

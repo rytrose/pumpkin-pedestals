@@ -50,5 +50,6 @@ export const WebSocketAPIMethod = {
   HEALTHCHECK: "healthcheck",
   GET_PEDESTALS: "getPedestals",
   SET_PEDESTALS_COLOR: "setPedestalsColor",
-  BLINK_PEDESTAL: "blinkPedestal",
+  BLINK_PEDESTALS: "blinkPedestals",
+  STOP_PEDESTALS_BLINKING: "stopPedestalsBlinking",
 };

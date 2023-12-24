@@ -53,6 +53,16 @@ async def websocket_handler(request):
                 method_data = data.get("data", [])
                 new_pedestals = await pedestal_cache.set_pedestals_color(method_data)
                 await socket.send_json({"method": method, "data": new_pedestals})
+            if method == "blinkPedestals":
+                method_data = data.get("data", [])
+                new_pedestals = await pedestal_cache.blink_pedestals(method_data)
+                await socket.send_json({"method": method, "data": new_pedestals})
+            if method == "stopPedestalsBlinking":
+                method_data = data.get("data", [])
+                new_pedestals = await pedestal_cache.stop_pedestals_blinking(
+                    method_data
+                )
+                await socket.send_json({"method": method, "data": new_pedestals})
     # Clean up the updating task
     update_task.cancel()
 
