@@ -4,7 +4,9 @@
             "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/Users/rytrose/Documents/Arduino/libraries/**"
+                "/Users/rytrose/Documents/Arduino/libraries/**",
+                "/Users/rytrose/Library/Arduino15/packages/ATTinyCore/hardware/avr/1.5.2/**",
+                "/Users/rytrose/Library/Arduino15/packages/arduino/tools/avr-gcc/7.3.0-atmel3.6.1-arduino7/avr/**"
             ],
             "defines": [],
             "macFrameworkPath": [

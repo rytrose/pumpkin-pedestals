@@ -17,6 +17,7 @@
 // #define I2C_PERIPHERAL_ADDRESS 0x7F // 127
 
 #include <TinyWireS.h>
+#include <EEPROM.h>
 
 #define UNKNOWN_COMMAND 0x00
 #define COMMAND_GET_STATE 0x01
@@ -26,13 +27,18 @@
 // The command that determines the context of data requested or sent by the controller
 uint8_t command = UNKNOWN_COMMAND;
 
-// The LED color state, default to white
-uint8_t red = 0xff;
-uint8_t green = 0xff;
-uint8_t blue = 0xff;
+#define EEPROM_RED_ADDR 0
+#define EEPROM_GREEN_ADDR 1
+#define EEPROM_BLUE_ADDR 2
+#define EEPROM_BLINKING_ADDR 3
 
-// The LED blinking state
-uint8_t blinking = 0x00;
+// The LED color state, loaded from EEPROM
+uint8_t red = EEPROM.read(EEPROM_RED_ADDR);
+uint8_t green = EEPROM.read(EEPROM_GREEN_ADDR);
+uint8_t blue = EEPROM.read(EEPROM_BLUE_ADDR);
+
+// The LED blinking state, loaded from EEPROM
+uint8_t blinking = EEPROM.read(EEPROM_BLINKING_ADDR);
 
 void setup()
 {
@@ -85,8 +91,7 @@ void receiveEvent(uint8_t available)
   {
   case UNKNOWN_COMMAND:
   case COMMAND_GET_STATE:
-    // Commands requesting data from the pedestal should not have any additional data from the controller.
-    // Read and drop any unexpected data.
+    // Commands requesting data from the pedestal should not have any additional data from the controller
     drainRxBuffer();
     break;
   case COMMAND_SET_COLOR:
@@ -94,16 +99,23 @@ void receiveEvent(uint8_t available)
       // Expect 3 bytes for the color values, if not drain the buffer
       drainRxBuffer();
     red = TinyWireS.read();
+    EEPROM.write(EEPROM_RED_ADDR, red);
     green = TinyWireS.read();
+    EEPROM.write(EEPROM_GREEN_ADDR, green);
     blue = TinyWireS.read();
+    EEPROM.write(EEPROM_BLUE_ADDR, blue);
+    break;
   case COMMAND_SET_BLINKING:
     if (TinyWireS.available() != 1)
       // Expect 1 byte for the blinking state, if not drain the buffer
       drainRxBuffer();
     blinking = TinyWireS.read();
+    EEPROM.write(EEPROM_BLINKING_ADDR, blinking);
+    break;
   }
 }
 
+// Reads and drops any unexpected data in the receive buffer
 void drainRxBuffer()
 {
   for (uint8_t i = 0; i < TinyWireS.available(); i++)
