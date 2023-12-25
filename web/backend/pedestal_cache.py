@@ -12,7 +12,7 @@ class PedestalCache:
         self.mock_pedestals = [
             {"address": "00", "color": "eb2e34", "blinking": True},
             {"address": "01", "color": "a2bdf1", "blinking": False},
-            {"address": "01", "color": "00a12d", "blinking": False},
+            {"address": "02", "color": "00a12d", "blinking": False},
         ]
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.setLevel(logging.DEBUG)
