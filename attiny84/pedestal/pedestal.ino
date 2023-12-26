@@ -18,6 +18,7 @@
 
 #include <TinyWireS.h>
 #include <EEPROM.h>
+#include <tinyNeoPixel_Static.h>
 
 #define UNKNOWN_COMMAND 0x00
 #define COMMAND_GET_STATE 0x01
@@ -40,15 +41,68 @@ uint8_t blue = EEPROM.read(EEPROM_BLUE_ADDR);
 // The LED blinking state, loaded from EEPROM
 uint8_t blinking = EEPROM.read(EEPROM_BLINKING_ADDR);
 
+#define NUM_PIXELS 1
+#define LED_PIN 8
+#define LED_PERIOD 16
+
+// The LED pixel array (3 channels per pixel)
+byte pixels[NUM_PIXELS * 3];
+
+// The LED interface
+tinyNeoPixel led = tinyNeoPixel(1, LED_PIN, NEO_GRB, pixels);
+
+// Counter for last LED update
+long lastLEDUpdate = 0;
+
+// Blink speed in milliseconds
+#define BLINK_SPEED 500
+
+// Whether the LED should be on or off while blinking
+bool blinkState = false;
+
+// Counter for last blink update
+long lastBlinkUpdate = 0;
+
 void setup()
 {
   TinyWireS.begin(I2C_PERIPHERAL_ADDRESS);
   TinyWireS.onReceive(receiveEvent);
   TinyWireS.onRequest(requestEvent);
+
+  pinMode(LED_PIN, OUTPUT);
 }
 
 void loop()
 {
+  // Update the LED every 16ms (62.5 Hz)
+  long currentTime = millis();
+  if (currentTime > lastLEDUpdate + 16)
+  {
+    lastLEDUpdate = currentTime;
+    // Update the blink state
+    if (blinking)
+    {
+      if (currentTime > lastBlinkUpdate + BLINK_SPEED)
+      {
+        blinkState = !blinkState;
+      }
+    }
+
+    // Update the LED
+    if (blinking && !blinkState)
+    {
+      // Set the LED to off
+      led.setPixelColor(0, led.Color(0, 0, 0));
+    }
+    else
+    {
+      // Set the LED to the color
+      led.setPixelColor(0, led.Color(red, green, blue));
+    }
+
+    led.show();
+  }
+
   // Check for I2C stop bit
   TinyWireS_stop_check();
 }
