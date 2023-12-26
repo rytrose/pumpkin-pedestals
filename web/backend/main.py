@@ -72,7 +72,7 @@ async def websocket_handler(request):
 async def setup_teardown(app):
     """Instantiates singletons such as a logger and the pedestal cache."""
     logger = logging.getLogger(app.__class__.__name__)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.DEBUG)  # type: ignore
     logger.addHandler(MyHandler(app.__class__.__name__))
     app["logger"] = logger
     app["pedestal_cache"] = PedestalCache(mock=MOCK)

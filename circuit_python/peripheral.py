@@ -6,6 +6,7 @@ from adafruit_ble.services.nordic import UARTService
 
 from log import MyHandler
 from command import CommandType, Command, int_to_ascii_byte, parse_command
+from i2c_controller import I2CController
 
 
 class BLEClient:
@@ -13,8 +14,9 @@ class BLEClient:
         self.ble = BLERadio()
         self.uart = UARTService()
         self.advertisement = ProvideServicesAdvertisement(self.uart)
+        self.i2c_controller = I2CController()
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.DEBUG)  # type: ignore
         self.logger.addHandler(MyHandler(self.__class__.__name__))
         self.healthcheck_task = None
         self.healthcheck_num_failed = 0
@@ -39,15 +41,17 @@ class BLEClient:
 
     async def _reset(self):
         for conn in self.ble.connections:
-            conn.disconnect()
+            if conn is not None:
+                conn.disconnect()
         self.pending_commands = {}
-        self.healthcheck_task.cancel()
+        if self.healthcheck_task is not None:
+            self.healthcheck_task.cancel()
         self.healthcheck_num_failed = 0
         asyncio.create_task(self.connect())
 
     async def _read(self):
         while self.ble.connected:
-            l = await asyncio.create_task(self._read_line())
+            l = await self._read_line()
             if l:
                 self.logger.debug("RX: %s", l)
                 command_type, id, command, data = parse_command(l)
@@ -64,15 +68,25 @@ class BLEClient:
                         )
                 else:
                     if command == Command.HEALTHCHECK:
-                        asyncio.create_task(self.send_command_response(id, command))
-                    # TODO: handle other requests
+                        await self.send_command_response(id, command)
                     if command == Command.GET_PEDESTALS:
-                        # TODO: query pedestals
-                        asyncio.create_task(
-                            self.send_command_response(
-                                id, command, "72FFE6000", "734959E60", "748C14240"
-                            )
+                        pedestals = await self.i2c_controller.get_pedestals()
+                        await self.send_command_response(id, command, *pedestals)
+                    if command == Command.SET_PEDESTALS_COLOR:
+                        pedestals = await self.i2c_controller.set_pedestals_color(data)
+                        await self.send_command_response(id, command, *pedestals)
+                    if command == Command.BLINK_PEDESTALS:
+                        data = [address + "1" for address in data]
+                        pedestals = await self.i2c_controller.set_pedestals_blinking(
+                            data
                         )
+                        await self.send_command_response(id, command, *pedestals)
+                    if command == Command.STOP_PEDESTALS_BLINKING:
+                        data = [address + "0" for address in data]
+                        pedestals = await self.i2c_controller.set_pedestals_blinking(
+                            data
+                        )
+                        await self.send_command_response(id, command, *pedestals)
 
         self.logger.info("no longer connected, reconnecting")
         asyncio.create_task(self._reset())
@@ -80,7 +94,7 @@ class BLEClient:
     async def _read_line(self):
         if self.uart.in_waiting > 0:
             l = self.uart.readline()
-            if l != b"":
+            if l != b"" and l is not None:
                 l = l.decode("utf-8").strip("\n")
                 return l
         return None
@@ -111,10 +125,8 @@ class BLEClient:
         while True:
             # Pessimistically set failed to have healthcheck responder reset to 0 on success
             self.healthcheck_num_failed += 1
-            await asyncio.create_task(
-                self.send_command_request(
-                    Command.HEALTHCHECK, response_handler=self.on_healthcheck_response
-                )
+            await self.send_command_request(
+                Command.HEALTHCHECK, response_handler=self.on_healthcheck_response
             )
             if self.healthcheck_num_failed > 2:
                 self.logger.error("failed healthcheck")

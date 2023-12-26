@@ -14,7 +14,7 @@ class BLEClient:
     def __init__(self):
         self.executor = ThreadPoolExecutor(1)
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.DEBUG)  # type: ignore
         self.logger.addHandler(MyHandler(self.__class__.__name__))
         self.ble = BLERadio()
         self.uart = None
@@ -31,7 +31,10 @@ class BLEClient:
                 for advertisement in self.ble.start_scan(
                     ProvideServicesAdvertisement, timeout=5
                 ):
-                    if UARTService not in advertisement.services:
+                    if (
+                        advertisement is not None
+                        and UARTService not in advertisement.services  # type: ignore
+                    ):
                         continue
                     self.logger.info("found UART service, connecting")
                     connection = self.ble.connect(advertisement)
@@ -48,14 +51,16 @@ class BLEClient:
 
     def write(self, data):
         self.logger.debug("TX: %s", data)
-        if self.ble.connected:
+        if self.ble.connected and self.uart is not None:
             self.uart.write((data + "\n").encode("utf-8"))
 
     async def _reset(self):
         for conn in self.ble.connections:
-            conn.disconnect()
+            if conn is not None:
+                conn.disconnect()
         self.pending_commands = {}
-        self.healthcheck_task.cancel()
+        if self.healthcheck_task is not None:
+            self.healthcheck_task.cancel()
         self.healthcheck_num_failed = 0
         asyncio.create_task(self.connect())
 
@@ -78,14 +83,14 @@ class BLEClient:
                         )
                 else:
                     if command == Command.HEALTHCHECK:
-                        asyncio.create_task(self.send_command_response(id, command))
+                        await self.send_command_response(id, command)
                     # TODO: handle other requests
 
         self.logger.info("not connected, reconnecting")
         asyncio.create_task(self._reset())
 
     async def _read_line(self):
-        if self.uart.in_waiting > 0:
+        if self.uart is not None and self.uart.in_waiting > 0:
             l = self.uart.readline()
             if l != b"":
                 l = l.decode("utf-8").strip("\n")
