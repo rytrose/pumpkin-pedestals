@@ -70,7 +70,7 @@ class BLEClient:
                         # TODO: query pedestals
                         asyncio.create_task(
                             self.send_command_response(
-                                id, command, "72FFE600", "734959E6", "748C1424"
+                                id, command, "72FFE6000", "734959E60", "748C14240"
                             )
                         )
 
