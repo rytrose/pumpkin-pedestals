@@ -40,7 +40,7 @@ class PedestalCache:
     async def _update_pedestal_state_loop(self):
         while True:
             await self.get_pedestals(refresh_cache=True)
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
 
     async def set_pedestals_color(self, pedestals_color):
         data = [
