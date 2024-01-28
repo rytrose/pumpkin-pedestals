@@ -2,7 +2,7 @@ import asyncio
 import adafruit_logging as logging
 
 from log import MyHandler
-from central import BLEClient
+from central import BLEClient, event_wait
 from command import Command
 
 

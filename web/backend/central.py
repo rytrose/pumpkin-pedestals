@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import adafruit_logging as logging
 from adafruit_ble import BLERadio
 from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
@@ -74,9 +75,10 @@ class BLEClient:
                 self.logger.debug("RX: %s", l)
                 command_type, id, command, data = parse_command(l)
                 if command_type == CommandType.RESPONSE:
-                    callback = self.pending_commands.get(id, None)
+                    callback, event = self.pending_commands.get(id, None)
                     if callback:
                         callback(command, data)
+                        event.set()
                     else:
                         self.logger.error(
                             "no callback for id: "
@@ -87,7 +89,6 @@ class BLEClient:
                 else:
                     if command == Command.HEALTHCHECK:
                         await self.send_command_response(id, command)
-                    # TODO: handle other requests
 
         self.logger.info("not connected, reconnecting")
         asyncio.create_task(self._reset())
@@ -105,9 +106,14 @@ class BLEClient:
             packet_id = int_to_ascii_byte(self.packet_id)
             id = "{}{}".format(CommandType.REQUEST, packet_id)
             packet = "{}|{}|{}".format(id, int_to_ascii_byte(command), "#".join(data))
-            self.pending_commands[packet_id] = response_handler
+            event = asyncio.Event()
+            self.pending_commands[packet_id] = (response_handler, event)
             self.packet_id = self.packet_id + 1
             self.write(packet)
+            if not await event_wait(event, 5):
+                self.logger.error(
+                    f"command {command} with ID {id} did not see a response after 5 seconds"
+                )
 
     async def send_command_response(self, id, command, *data):
         if self.ble.connected:
@@ -141,3 +147,17 @@ class BLEClient:
                     self.ble.connections[0].disconnect()  # type: ignore
                 return
             await asyncio.sleep(1)
+
+
+async def event_wait(event, timeout):
+    """
+    Waits on an asyncio.Event() until the timeout.
+
+    Returns True when the event is set, returns False if the timeout elapses.
+
+        See: https://stackoverflow.com/a/49632779
+    """
+    # suppress TimeoutError because we'll return False in case of timeout
+    with contextlib.suppress(asyncio.TimeoutError):
+        await asyncio.wait_for(event.wait(), timeout)
+    return event.is_set()
