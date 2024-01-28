@@ -4,7 +4,7 @@ import Carousel from "./Carousel";
 import { rgbToHex } from "../utils/color";
 import { Button, Spinner } from "@material-tailwind/react";
 import { RgbColorPicker } from "react-colorful";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 const PedestalBrowser = () => {
   // Connected websocket connections will receive async pedestal state updates at
@@ -34,8 +34,12 @@ const PedestalBrowser = () => {
   }, [getPedestalData]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [pickerColor, setPickerColor] = useState();
-  const [newPedestalColor, setNewPedestalColor] = useState();
+  const [pickerColor, setPickerColor] = useState("#ffffff");
+  const [newPedestalColor, setNewPedestalColor] = useState({
+    r: 255,
+    g: 255,
+    b: 255,
+  });
 
   // When the picker color is changed update the new pedestal color indicator
   // and the color picker handle
@@ -44,22 +48,10 @@ const PedestalBrowser = () => {
     setPickerColor(color);
   };
 
-  // Whenever a new pedestal is shown move the color picker
-  // to its color and set the new pedestal color indicator
-  const onCarouselChange = useCallback(
-    (index) => {
-      const pedestal = pedestalData[index];
-      const rgbColor = {
-        r: parseInt(pedestal.color.substring(0, 2), 16),
-        g: parseInt(pedestal.color.substring(2, 4), 16),
-        b: parseInt(pedestal.color.substring(4, 6), 16),
-      };
-      setPickerColor(rgbColor);
-      setNewPedestalColor(rgbColor);
-      setCurrentIndex(index);
-    },
-    [pedestalData]
-  );
+  // Maintain index state
+  const onCarouselChange = (index) => {
+    setCurrentIndex(index);
+  };
 
   const [setColorLoading, setSetColorLoading] = useState(false);
 
