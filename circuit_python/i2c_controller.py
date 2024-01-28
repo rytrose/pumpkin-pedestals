@@ -17,7 +17,7 @@ class PedestalCommand:
 class I2CController:
     def __init__(self):
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.DEBUG)  # type: ignore
+        self.logger.setLevel(logging.INFO)  # type: ignore
         self.logger.addHandler(MyHandler(self.__class__.__name__))
         self.i2c = busio.I2C(board.SCL, board.SDA)
         self.i2c_lock = asyncio.Lock()
@@ -141,10 +141,10 @@ class I2CController:
         in_buffer = bytearray(response_length)
         try:
             if self.i2c.try_lock():
-                self.logger.debug(f"writing: out_buffer {[i for i in out_buffer]}")
+                self.logger.debug(f"I2C write: out_buffer {[i for i in out_buffer]}")
                 self.i2c.writeto(int(address, 16), out_buffer)
                 self.i2c.readfrom_into(int(address, 16), in_buffer)
-                self.logger.debug(f"reading: in_buffer {[i for i in in_buffer]}")
+                self.logger.debug(f"I2C read: in_buffer {[i for i in in_buffer]}")
             else:
                 self.logger.error("Unable to acquire I2C lock in send_i2c_command")
         except (RuntimeError, OSError) as e:

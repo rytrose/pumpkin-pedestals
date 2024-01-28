@@ -14,7 +14,7 @@ class BLEClient:
     def __init__(self):
         self.executor = ThreadPoolExecutor(1)
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.DEBUG)  # type: ignore
+        self.logger.setLevel(logging.INFO)  # type: ignore
         self.logger.addHandler(MyHandler(self.__class__.__name__))
         self.ble = BLERadio()
         self.uart = None

@@ -148,11 +148,7 @@ void requestEvent()
   switch (command)
   {
   case COMMAND_GET_STATE:
-    writeState();
-    break;
   case COMMAND_SET_COLOR:
-    writeState();
-    break;
   case COMMAND_SET_BLINKING:
     writeState();
     break;

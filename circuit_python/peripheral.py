@@ -16,7 +16,7 @@ class BLEClient:
         self.advertisement = ProvideServicesAdvertisement(self.uart)
         self.i2c_controller = I2CController()
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.DEBUG)  # type: ignore
+        self.logger.setLevel(logging.INFO)  # type: ignore
         self.logger.addHandler(MyHandler(self.__class__.__name__))
         self.healthcheck_task = None
         self.healthcheck_num_failed = 0
