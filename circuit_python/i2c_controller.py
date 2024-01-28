@@ -27,7 +27,9 @@ class I2CController:
         async with self.i2c_lock:
             if self.i2c.try_lock():
                 self.pedestal_addresses = [
-                    "%x" % address for address in self.i2c.scan()
+                    "%x" % address
+                    for address in self.i2c.scan()
+                    if address > 47 and address < 64
                 ]
                 self.logger.debug(f"scanned pedestals: {self.pedestal_addresses}")
                 self.i2c.unlock()
