@@ -28,19 +28,22 @@ class BLEClient:
             self.logger.info("starting scanning")
 
             def scan():
-                for advertisement in self.ble.start_scan(
-                    ProvideServicesAdvertisement, timeout=5
-                ):
-                    if (
-                        advertisement is not None
-                        and UARTService not in advertisement.services  # type: ignore
+                try:
+                    for advertisement in self.ble.start_scan(
+                        ProvideServicesAdvertisement, timeout=5
                     ):
-                        continue
-                    self.logger.info("found UART service, connecting")
-                    connection = self.ble.connect(advertisement)
-                    self.uart = connection[UARTService]
-                    self.logger.info("connected")
-                    break
+                        if (
+                            advertisement is not None
+                            and UARTService not in advertisement.services  # type: ignore
+                        ):
+                            continue
+                        self.logger.info("found UART service, connecting")
+                        connection = self.ble.connect(advertisement)
+                        self.uart = connection[UARTService]
+                        self.logger.info("connected")
+                        break
+                except Exception as e:
+                    self.logger.error(f"BLE scanning failed: {e}")
 
             # Allow the coroutine to yield by scanning in a new thread
             await asyncio.get_running_loop().run_in_executor(self.executor, scan)
@@ -123,12 +126,18 @@ class BLEClient:
         while True:
             # Pessimistically set failed to have healthcheck responder reset to 0 on success
             self.healthcheck_num_failed += 1
-            await asyncio.create_task(
-                self.send_command_request(
-                    Command.HEALTHCHECK, response_handler=self.on_healthcheck_response
+            try:
+                await asyncio.create_task(
+                    self.send_command_request(
+                        Command.HEALTHCHECK,
+                        response_handler=self.on_healthcheck_response,
+                    )
                 )
-            )
+            except Exception as e:
+                self.logger.error(f"sending healthcheck failed: {e}")
             if self.healthcheck_num_failed > 2:
-                self.logger.error("failed healthcheck")
-                asyncio.create_task(self._reset())
+                self.logger.error("failed healthcheck, disconnecting")
+                if self.ble.connections and len(self.ble.connections) > 0:
+                    self.ble.connections[0].disconnect()  # type: ignore
+                return
             await asyncio.sleep(1)

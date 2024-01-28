@@ -1,24 +1,27 @@
-// Using range 96 - 111 (0x60 - 0x6F)
-#define I2C_PERIPHERAL_ADDRESS 60 // 96
-// #define I2C_PERIPHERAL_ADDRESS 0x61 // 97
-// #define I2C_PERIPHERAL_ADDRESS 0x62 // 98
-// #define I2C_PERIPHERAL_ADDRESS 0x63 // 99
-// #define I2C_PERIPHERAL_ADDRESS 0x64 // 100
-// #define I2C_PERIPHERAL_ADDRESS 0x65 // 101
-// #define I2C_PERIPHERAL_ADDRESS 0x66 // 102
-// #define I2C_PERIPHERAL_ADDRESS 0x67 // 103
-// #define I2C_PERIPHERAL_ADDRESS 0x68 // 104
-// #define I2C_PERIPHERAL_ADDRESS 0x69 // 105
-// #define I2C_PERIPHERAL_ADDRESS 0x6A // 106
-// #define I2C_PERIPHERAL_ADDRESS 0x6B // 107
-// #define I2C_PERIPHERAL_ADDRESS 0x6C // 108
-// #define I2C_PERIPHERAL_ADDRESS 0x6D // 109
-// #define I2C_PERIPHERAL_ADDRESS 0x6E // 110
-// #define I2C_PERIPHERAL_ADDRESS 0x6F // 111
+// Using range 48 - 63 (0x30 - 0x3f)
+#define I2C_PERIPHERAL_ADDRESS 48 // 0x30
+// #define I2C_PERIPHERAL_ADDRESS 49 // 0x31
+// #define I2C_PERIPHERAL_ADDRESS 50 // 0x32
+// #define I2C_PERIPHERAL_ADDRESS 51 // 0x33
+// #define I2C_PERIPHERAL_ADDRESS 52 // 0x34
+// #define I2C_PERIPHERAL_ADDRESS 53 // 0x35
+// #define I2C_PERIPHERAL_ADDRESS 54 // 0x36
+// #define I2C_PERIPHERAL_ADDRESS 55 // 0x37
+// #define I2C_PERIPHERAL_ADDRESS 56 // 0x38
+// #define I2C_PERIPHERAL_ADDRESS 57 // 0x39
+// #define I2C_PERIPHERAL_ADDRESS 58 // 0x3a
+// #define I2C_PERIPHERAL_ADDRESS 59 // 0x3b
+// #define I2C_PERIPHERAL_ADDRESS 60 // 0x3c
+// #define I2C_PERIPHERAL_ADDRESS 61 // 0x3d
+// #define I2C_PERIPHERAL_ADDRESS 62 // 0x3e
+// #define I2C_PERIPHERAL_ADDRESS 63 // 0x3f
 
 #include <TinyWireS.h>
 #include <EEPROM.h>
 #include <tinyNeoPixel_Static.h>
+
+// LED used for debugging purposes
+#define DEBUG_LED_PIN 1
 
 #define UNKNOWN_COMMAND 0x00
 #define COMMAND_GET_STATE 0x01
@@ -28,21 +31,28 @@
 // The command that determines the context of data requested or sent by the controller
 uint8_t command = UNKNOWN_COMMAND;
 
-#define EEPROM_RED_ADDR 0
-#define EEPROM_GREEN_ADDR 1
-#define EEPROM_BLUE_ADDR 2
-#define EEPROM_BLINKING_ADDR 3
+#define EEPROM_RED_ADDR 10
+#define EEPROM_GREEN_ADDR 11
+#define EEPROM_BLUE_ADDR 12
+#define EEPROM_BLINKING_ADDR 13
 
 // The LED color state, loaded from EEPROM
 uint8_t red = EEPROM.read(EEPROM_RED_ADDR);
 uint8_t green = EEPROM.read(EEPROM_GREEN_ADDR);
 uint8_t blue = EEPROM.read(EEPROM_BLUE_ADDR);
 
+// Maintain previous state to write to EEPROM on changes outside of the
+// I2C interrupts, which seems to cause issues (too slow?)
+uint8_t prevRed = red;
+uint8_t prevGreen = green;
+uint8_t prevBlue = blue;
+
 // The LED blinking state, loaded from EEPROM
 uint8_t blinking = EEPROM.read(EEPROM_BLINKING_ADDR);
+uint8_t prevBlinking = blinking;
 
 #define NUM_PIXELS 1
-#define LED_PIN 8
+#define LED_PIN 2
 #define LED_PERIOD 16
 
 // The LED pixel array (3 channels per pixel)
@@ -70,6 +80,8 @@ void setup()
   TinyWireS.onRequest(requestEvent);
 
   pinMode(LED_PIN, OUTPUT);
+  pinMode(DEBUG_LED_PIN, OUTPUT);
+  debug(4);
 }
 
 void loop()
@@ -85,6 +97,7 @@ void loop()
       if (currentTime > lastBlinkUpdate + BLINK_SPEED)
       {
         blinkState = !blinkState;
+        lastBlinkUpdate = currentTime;
       }
     }
 
@@ -105,6 +118,28 @@ void loop()
 
   // Check for I2C stop bit
   TinyWireS_stop_check();
+
+  // If state changed, write to EEPROM
+  if (red != prevRed)
+  {
+    EEPROM.write(EEPROM_RED_ADDR, red);
+    prevRed = red;
+  }
+  if (blue != prevBlue)
+  {
+    EEPROM.write(EEPROM_BLUE_ADDR, blue);
+    prevBlue = blue;
+  }
+  if (green != prevGreen)
+  {
+    EEPROM.write(EEPROM_GREEN_ADDR, green);
+    prevGreen = green;
+  }
+  if (blinking != prevBlinking)
+  {
+    EEPROM.write(EEPROM_BLINKING_ADDR, blinking);
+    prevBlinking = blinking;
+  }
 }
 
 // Called on peripheral read, peripheral should write bytes to the controller
@@ -113,7 +148,11 @@ void requestEvent()
   switch (command)
   {
   case COMMAND_GET_STATE:
+    writeState();
+    break;
   case COMMAND_SET_COLOR:
+    writeState();
+    break;
   case COMMAND_SET_BLINKING:
     writeState();
     break;
@@ -153,18 +192,14 @@ void receiveEvent(uint8_t available)
       // Expect 3 bytes for the color values, if not drain the buffer
       drainRxBuffer();
     red = TinyWireS.read();
-    EEPROM.write(EEPROM_RED_ADDR, red);
     green = TinyWireS.read();
-    EEPROM.write(EEPROM_GREEN_ADDR, green);
     blue = TinyWireS.read();
-    EEPROM.write(EEPROM_BLUE_ADDR, blue);
     break;
   case COMMAND_SET_BLINKING:
     if (TinyWireS.available() != 1)
       // Expect 1 byte for the blinking state, if not drain the buffer
       drainRxBuffer();
     blinking = TinyWireS.read();
-    EEPROM.write(EEPROM_BLINKING_ADDR, blinking);
     break;
   }
 }
@@ -174,4 +209,17 @@ void drainRxBuffer()
 {
   for (uint8_t i = 0; i < TinyWireS.available(); i++)
     TinyWireS.read();
+}
+
+// Flashes the debug LED the provided number of times
+void debug(int num)
+{
+  for (int i = 0; i < num; i++)
+  {
+    // On for 50ms, (LOW/HIGH are reversed)
+    digitalWrite(DEBUG_LED_PIN, LOW);
+    delay(50);
+    digitalWrite(DEBUG_LED_PIN, HIGH);
+    delay(200);
+  }
 }

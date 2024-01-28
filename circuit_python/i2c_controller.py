@@ -2,12 +2,11 @@ import asyncio
 import board
 import busio
 import adafruit_logging as logging
-from enum import Enum
 
 from log import MyHandler
 
 
-class PedestalCommand(Enum):
+class PedestalCommand:
     """Enum to signal to the peripheral what data is expected."""
 
     GET_STATE = 0x01
@@ -26,7 +25,14 @@ class I2CController:
 
     async def scan_for_pedestals(self):
         async with self.i2c_lock:
-            self.pedestals = [hex(address) for address in self.i2c.scan()]
+            if self.i2c.try_lock():
+                self.pedestal_addresses = [
+                    "%x" % address for address in self.i2c.scan()
+                ]
+                self.logger.debug(f"scanned pedestals: {self.pedestal_addresses}")
+                self.i2c.unlock()
+            else:
+                self.logger.error("Unable to acquire I2C lock in scan_for_pedestals")
 
     async def get_pedestals(self):
         """
@@ -49,10 +55,10 @@ class I2CController:
                 if response is None:
                     continue
                 pedestals.append(
-                    f"{address:X}"  # Pedestal address, e.g. 62
-                    + f"{response[0]:X}"  # Red hex, e.g. 1A
-                    + f"{response[1]:X}"  # Green hex, e.g. 2B
-                    + f"{response[2]:X}"  # Blue hex, e.g. 3C
+                    f"{address}"  # Pedestal address, e.g. 62
+                    + f"{response[0]:02x}"  # Red hex, e.g. 1A
+                    + f"{response[1]:02x}"  # Green hex, e.g. 2B
+                    + f"{response[2]:02x}"  # Blue hex, e.g. 3C
                     + f"{response[3]:d}"  # Blinking state, either 0 or 1
                 )
         return pedestals
@@ -73,7 +79,7 @@ class I2CController:
         pedestals = []
         async with self.i2c_lock:
             for pedestal_color in pedestal_colors:
-                address = int(pedestal_color[0:2], 16)
+                address = pedestal_color[0:2].lower()
                 if address not in self.pedestal_addresses:
                     self.logger.error(
                         "Attempted to set color for address not on I2C bus: %X", address
@@ -102,7 +108,7 @@ class I2CController:
         pedestals = []
         async with self.i2c_lock:
             for pedestal_blinking_state in pedestal_blinking_states:
-                address = int(pedestal_blinking_state[0:2], 16)
+                address = pedestal_blinking_state[0:2].lower()
                 if address not in self.pedestal_addresses:
                     self.logger.error(
                         "Attempted to set blinking for address not on I2C bus: %X",
@@ -122,7 +128,7 @@ class I2CController:
         """Sends a command via an I2C transaction.
 
         Args:
-            address (int): Hex I2C peripheral address
+            address (String): Hex I2C peripheral address
             command (PeripheralCommand): The command to send
             data (List[int]): Data to send with the command, or an empty list
             response_length (int): The expected number of bytes to receive from the peripheral
@@ -131,18 +137,24 @@ class I2CController:
             A bytearray of length `response_length` containing the data returned by the peripheral,
             or None if the peripheral was unable to be reached.
         """
-        out_buffer = bytearray([command.value] + data)
+        out_buffer = bytearray([command] + data)
         in_buffer = bytearray(response_length)
         try:
-            self.i2c.writeto_then_readfrom(address, out_buffer, in_buffer)
-        except RuntimeError as e:
+            if self.i2c.try_lock():
+                self.logger.debug(f"writing: out_buffer {[i for i in out_buffer]}")
+                self.i2c.writeto(int(address, 16), out_buffer)
+                self.i2c.readfrom_into(int(address, 16), in_buffer)
+                self.logger.debug(f"reading: in_buffer {[i for i in in_buffer]}")
+            else:
+                self.logger.error("Unable to acquire I2C lock in send_i2c_command")
+        except (RuntimeError, OSError) as e:
             self.logger.error(
-                "Failed on writeto_then_readfrom for command %s to address %X",
-                command.name,
-                address,
+                f"Failed i2c for command {command} to address {address}",
             )
             self.pedestal_addresses = [
                 a for a in self.pedestal_addresses if a != address
             ]
             return None
+        finally:
+            self.i2c.unlock()
         return in_buffer

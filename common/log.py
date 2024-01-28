@@ -1,6 +1,6 @@
 import adafruit_logging as logging
 
-from datetime import datetime
+from adafruit_datetime import datetime
 
 
 class MyHandler(logging.StreamHandler):
@@ -13,4 +13,4 @@ class MyHandler(logging.StreamHandler):
 
         :param record: The record (message object) to be logged
         """
-        return f"{datetime.utcnow().strftime('%a %d %b %Y %H:%M:%S.%f')[:-3]} +00:00: [{record.levelname}] [{self.name}]: {record.msg}"
+        return f"{datetime.now().ctime()}: [{record.levelname}] [{self.name}]: {record.msg}"

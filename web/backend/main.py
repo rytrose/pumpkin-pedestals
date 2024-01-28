@@ -8,7 +8,7 @@ from pedestal_cache import PedestalCache
 routes = web.RouteTableDef()
 
 # Set to True to mock the BLE interface for development purposes
-MOCK = True
+MOCK = False
 
 
 @routes.get("/healthcheck")

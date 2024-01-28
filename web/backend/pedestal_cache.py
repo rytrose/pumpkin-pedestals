@@ -105,13 +105,6 @@ class PedestalCache:
                 address = pedestal[0:2]
                 hex_color = pedestal[2:-1]
                 blinking = True if pedestal[-1] == "1" else False
-                self.logger.debug(
-                    "%s responded with pedestal at address %s with color #%s and blinking state %b",
-                    method,
-                    address,
-                    hex_color,
-                    blinking,
-                )
                 pedestals.append(
                     {"address": address, "color": hex_color, "blinking": blinking}
                 )
