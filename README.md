@@ -2,6 +2,35 @@
 
 Modular BLE-controlled LED pedestals for our collection of glass pumpkins.
 
+## Development
+
+### Server
+To run the server:
+
+- On WSL, ensure the web app has been built recently
+  - `cd projects/pumpkin-pedestals/web`
+  - `npm run build`
+- If needed, update the pi's IP address in `copy_to_pi.sh`
+  - WSL seems to have issues resolving the .local IP, so if needed run `ping rytrose-pi-zero-w.local` in a command prompt on Windows to get the IP and use it directly
+- SSH into `rytrose@rytrose-pi-zero-w.local`
+  - Again, replacing the .local address with the explicit address if needed
+- `cd projects/pumpkin-pedestals/web/backend`
+- Run `PYTHONPATH=$HOME/projects/pumpkin-pedestals/common python main.py`
+- The web app should now be accessible at http://rytrose-pi-zero-w.local:8080
+
+### Peripheral
+To work with the peripheral (aka the hub):
+
+- Plug the XIAO into the computer via USB
+- On Windows in a command prompt with administrator privileges run `usbipd list`
+  - Take note of the USB Serial Device, likely associated with a COM port, and note its bus ID
+- To view the logs:
+  - In the command prompt run `usbipd bind --busid <BUSID>`, replacing `BUSID` with the value from before
+  - In the command prompt run `usbipd attach --wsl --busid <BUSID>`, replacing `BUSID` with the value from before
+    - This should detach the USB device from Windows to make it avaiable in WSL
+  - In WSL run `sudo screen /dev/ttyACM0`
+    - Press Ctrl+C if needed to bring up the CircuitPython prompt, or Ctrl+D to reload
+
 ## BLE Protocol
 
 Communication across the BLE UART characteristic follows a simple ID-command-data protocol:
