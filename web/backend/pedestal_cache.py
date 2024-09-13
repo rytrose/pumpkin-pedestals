@@ -15,7 +15,7 @@ class PedestalCache:
             {"address": "02", "color": "00a12d", "blinking": False},
         ]
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.DEBUG)  # type: ignore
+        self.logger.setLevel(logging.INFO)  # type: ignore
         self.logger.addHandler(MyHandler(self.__class__.__name__))
         self.ble_client = BLEClient()
         asyncio.create_task(self.ble_client.connect())

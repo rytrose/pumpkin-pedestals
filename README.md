@@ -5,7 +5,7 @@ Modular BLE-controlled LED pedestals for our collection of glass pumpkins.
 ## Development
 
 ### Server
-To run the server:
+To manually start the server:
 
 - On WSL, ensure the web app has been built recently
   - `cd projects/pumpkin-pedestals/web`
@@ -17,6 +17,28 @@ To run the server:
 - `cd projects/pumpkin-pedestals/web/backend`
 - Run `PYTHONPATH=$HOME/projects/pumpkin-pedestals/common python main.py`
 - The web app should now be accessible at http://rytrose-pi-zero-w.local:8080
+
+A systemd service has been created so the server starts automatically on boot:
+
+```
+[Unit]
+Description=Python server for the pumpkin pedestals web app
+After=multi-user.target
+Requires=network.target
+
+[Service]
+Type=idle
+User=rytrose
+Environment="PYTHONPATH=/home/rytrose/projects/pumpkin-pedestals/common"
+ExecStart=/usr/bin/python /home/rytrose/projects/pumpkin-pedestals/web/backend/main.py
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target
+```
+
+To view the logs, run `journalctl -u pumpkin-pedestals.service -f`.
 
 ### Peripheral
 To work with the peripheral (aka the hub):

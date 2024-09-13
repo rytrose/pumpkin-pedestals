@@ -1,3 +1,4 @@
+import os
 import asyncio
 import adafruit_logging as logging
 from aiohttp import web
@@ -10,6 +11,8 @@ routes = web.RouteTableDef()
 # Set to True to mock the BLE interface for development purposes
 MOCK = False
 
+def absolute_path_relative_to_module_file(path):
+    return os.path.join(os.path.dirname(os.path.realpath(__file__)), path)
 
 @routes.get("/healthcheck")
 async def healthcheck(request):
@@ -19,7 +22,7 @@ async def healthcheck(request):
 @routes.get("/")
 async def index(request):
     """Serves the built React app."""
-    with open("../build/index.html") as f:
+    with open(absolute_path_relative_to_module_file("../build/index.html")) as f:
         return web.Response(text=f.read(), content_type="text/html")
 
 
@@ -72,7 +75,7 @@ async def websocket_handler(request):
 async def setup_teardown(app):
     """Instantiates singletons such as a logger and the pedestal cache."""
     logger = logging.getLogger(app.__class__.__name__)
-    logger.setLevel(logging.DEBUG)  # type: ignore
+    logger.setLevel(logging.INFO)  # type: ignore
     logger.addHandler(MyHandler(app.__class__.__name__))
     app["logger"] = logger
     app["pedestal_cache"] = PedestalCache(mock=MOCK)
@@ -82,7 +85,7 @@ async def setup_teardown(app):
 def main():
     app = web.Application()
     # Serve from the React app build folder
-    routes.static("/", "../build")
+    routes.static("/", absolute_path_relative_to_module_file("../build"))
     app.add_routes(routes)
     app.cleanup_ctx.append(setup_teardown)
     return app
