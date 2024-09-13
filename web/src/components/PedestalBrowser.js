@@ -151,7 +151,7 @@ const PedestalBrowser = () => {
                   onClick={onBlinkPedestal}
                   loading={blinkPedestalLoading}
                 >
-                  {pedestalData[currentIndex].blinking
+                  {pedestalData[currentIndex]?.blinking
                     ? "Stop Pedestal Blinking"
                     : "Blink Pedestal"}
                 </Button>

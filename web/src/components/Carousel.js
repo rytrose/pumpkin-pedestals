@@ -7,6 +7,7 @@ const Carousel = ({ className, items, onChange }) => {
   const [index, setIndex] = useState(0);
   const handlePrevRef = useRef();
   const handleNextRef = useRef();
+  const setActiveIndexRef = useRef();
 
   const swipeHandlers = useSwipeable({
     onSwipedLeft: (eventData) => {
@@ -17,21 +18,31 @@ const Carousel = ({ className, items, onChange }) => {
     },
   });
 
+  // Propagates index changes upstream
   useEffect(() => {
     onChange(index);
   }, [onChange, index]);
 
+  // Orchestrates responding to an index change
   const onIndexChange = useCallback(
     (delta, handleFunc) => {
       return function () {
         const newIndex = index + delta;
         setIndex(newIndex);
-        if (!!onChange) onChange(newIndex);
         handleFunc();
       };
     },
     [index, onChange]
   );
+
+  // Handles updating the index if the current index is lost
+  useEffect(() => {
+    if (!!items && index > items.length - 1) {
+      const newIndex = items.length - 1;
+      setIndex(newIndex);
+      if(!!setActiveIndexRef.current) setActiveIndexRef.current(newIndex);
+    }
+  }, [items, index]);
 
   return (
     <MTCarousel
@@ -71,7 +82,9 @@ const Carousel = ({ className, items, onChange }) => {
           )
         );
       }}
-      navigation={() => {}}
+      navigation={({ setActiveIndex }) => {
+        setActiveIndexRef.current = setActiveIndex;
+      }}
     >
       {items.map((item, i) => (
         <div key={`carousel-${i}`}>{item}</div>
