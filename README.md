@@ -30,7 +30,7 @@ Requires=network.target
 Type=idle
 User=rytrose
 Environment="PYTHONPATH=/home/rytrose/projects/pumpkin-pedestals/common"
-ExecStart=/usr/bin/python /home/rytrose/projects/pumpkin-pedestals/web/backend/main.py
+ExecStart=/home/rytrose/projects/pumpkin-pedestals/web/backend/venv/bin/python /home/rytrose/projects/pumpkin-pedestals/web/backend/main.py
 Restart=always
 RestartSec=1
 

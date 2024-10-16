@@ -7,5 +7,5 @@ rsync -aR --progress \
     common \
     web/backend \
     web/build \
-    rytrose@10.0.0.52:/home/rytrose/projects/pumpkin-pedestals
+    rytrose@10.0.0.62:/home/rytrose/projects/pumpkin-pedestals
     # ^ WSL doesn't seem to resolve rytrose-pi-zero-w.local so you may need to update this IP
